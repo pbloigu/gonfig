@@ -11,11 +11,13 @@ import (
 type ErrorCode string
 
 const (
-	NOT_ROOT           ErrorCode = "NOT_ROOT"
-	READ_FAILED        ErrorCode = "READ_FAILED"
-	PARSE_FAILED       ErrorCode = "PARSE_FAILED"
-	SETTING_GID_FAILED ErrorCode = "SETTING_GID_FAILED"
-	SETTING_UID_FAILED ErrorCode = "SETTING_UID_FAILED"
+	NOT_ROOT                     ErrorCode = "NOT_ROOT"
+	READ_FAILED                  ErrorCode = "READ_FAILED"
+	PARSE_FAILED                 ErrorCode = "PARSE_FAILED"
+	SETTING_GID_FAILED           ErrorCode = "SETTING_GID_FAILED"
+	SETTING_UID_FAILED           ErrorCode = "SETTING_UID_FAILED"
+	STATE_DIR_CREATE_FAILED      ErrorCode = "STATE_DIR_CREATE_FAILED"
+	STATE_DIR_PERMISSIONS_FAILED ErrorCode = "STATE_DIR_PERMISSIONS_FAILED"
 )
 
 type Error struct {
@@ -30,6 +32,7 @@ func (e *Error) Error() string {
 type RunAsConfig interface {
 	Uid() int
 	Gid() int
+	StatePath() string
 }
 
 func Get(path string, into RunAsConfig) error {
@@ -43,6 +46,10 @@ func Get(path string, into RunAsConfig) error {
 	}
 
 	if err := parse(data, into); err != nil {
+		return err
+	}
+
+	if err := createStateDirectory(into.StatePath(), into.Uid(), into.Gid()); err != nil {
 		return err
 	}
 
@@ -81,6 +88,26 @@ func parse(data []byte, into RunAsConfig) error {
 		return &Error{
 			Code:  PARSE_FAILED,
 			Cause: err,
+		}
+	}
+	return nil
+}
+
+func createStateDirectory(path string, uid int, gid int) error {
+	if path != "" {
+		err := os.Mkdir(path, 0755)
+		if err != nil && !os.IsExist(err) {
+			return &Error{
+				Code:  STATE_DIR_CREATE_FAILED,
+				Cause: err,
+			}
+		}
+		err = os.Chown(path, uid, gid)
+		if err != nil {
+			return &Error{
+				Code:  STATE_DIR_PERMISSIONS_FAILED,
+				Cause: err,
+			}
 		}
 	}
 	return nil

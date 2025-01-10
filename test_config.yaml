@@ -4,3 +4,5 @@ db:
 runas:
   uid: 1000
   gid: 1000
+state:
+  path: "/tmp/gonfig"

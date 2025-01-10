@@ -15,6 +15,9 @@ type testConfig struct {
 		Uid int `yaml:"uid"`
 		Gid int `yaml:"gid"`
 	} `yaml:"runas"`
+	State struct {
+		Path string `yaml:"path"`
+	} `yaml:"state"`
 }
 
 func (tc *testConfig) Gid() int {
@@ -23,6 +26,10 @@ func (tc *testConfig) Gid() int {
 
 func (tc *testConfig) Uid() int {
 	return tc.Uid()
+}
+
+func (tc *testConfig) StatePath() string {
+	return tc.State.Path
 }
 
 func TestParse(t *testing.T) {
@@ -39,4 +46,5 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, "dbpasswd", tc.Db.Password)
 	assert.Equal(t, 1000, tc.RunAs.Uid)
 	assert.Equal(t, 1000, tc.RunAs.Gid)
+	assert.Equal(t, "/tmp/gonfig", tc.State.Path)
 }
