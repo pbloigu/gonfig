@@ -59,8 +59,16 @@ func listMeasurements(ctx context.Context, input *struct {
 func listMeasurementValues(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application to get."`
 	Name string `path:"name" doc:"Name of the measurement."`
+	Sort string `query:"sort" enum:"created,value" required:"false" doc:"Sort by." default:"created"`
+	Dir  string `query:"dir" enum:"asc,desc" required:"false" doc:"Sort direction." default:"desc"`
+	Page int    `query:"page" required:"false" doc:"Page number. 1-based, please." minimum:"1" default:"1"`
+	Size int    `query:"size" required:"false" maximum:"50" doc:"Page size." default:"10"`
 }) (*struct{ Body api.MeasurementValues }, error) {
-	mvs := service.ListMeasurementValues(input.Id, input.Name)
+	mvs := service.ListMeasurementValues(input.Id,
+		input.Name,
+		service.NewSort(input.Sort, "created", input.Dir),
+		service.NewPagination(input.Size, 10, input.Page),
+	)
 	return &struct{ Body api.MeasurementValues }{Body: mvs}, nil
 }
 
@@ -71,6 +79,28 @@ func addApplication(ctx context.Context, input *struct {
 }, error) {
 	app := service.AddApplication(input.Body)
 	return &struct{ Body api.Application }{Body: app}, nil
+}
+
+func addMeasurement(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to add a new measurement."`
+	Body api.Measurement
+}) (*struct{}, error) {
+	service.InitMeasurement(input.Id, input.Body)
+	return &struct{}{}, nil
+}
+
+func getMeasurement(c context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to get the measurement."`
+	Name string `path:"name" doc:"Name of the measurement."`
+}) (*struct {
+	Body api.Measurement
+}, error) {
+	response := struct {
+		Body api.Measurement
+	}{
+		Body: service.GetMeasurement(input.Id, input.Name),
+	}
+	return &response, nil
 }
 
 func updateApplication(c context.Context, input *struct {

@@ -15,13 +15,13 @@ export default class {
             : axios.create(configOrInstance)
     }
 
-    private application_post(params: Record<string, never>, data: WithoutReadonly<Application>, options?: AxiosRequestConfig) {
+    private addApplication(params: Record<string, never>, data: WithoutReadonly<Application>, options?: AxiosRequestConfig) {
         return this.axios.post<WithoutWriteonly<Application>>(
             "/application", data, options
         );
     }
 
-    private id_get(params: {
+    private getApplication(params: {
         'id': string
     }, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<Application>>(
@@ -29,7 +29,7 @@ export default class {
         );
     }
 
-    private id_patch(params: {
+    private updateApplication(params: {
         'id': string
     }, data: WithoutReadonly<Application>, options?: AxiosRequestConfig) {
         return this.axios.patch<WithoutWriteonly<Application>>(
@@ -37,7 +37,7 @@ export default class {
         );
     }
 
-    private id_delete(params: {
+    private deleteApplication(params: {
         'id': string
     }, options?: AxiosRequestConfig) {
         return this.axios.delete(
@@ -45,7 +45,7 @@ export default class {
         );
     }
 
-    private configuration_post(params: {
+    private addConfiguration(params: {
         'id': string
     }, data: WithoutReadonly<Configuration>, options?: AxiosRequestConfig) {
         return this.axios.post(
@@ -53,7 +53,24 @@ export default class {
         );
     }
 
-    private measurements_get(params: {
+    private addMeasurement(params: {
+        'id': string
+    }, data: WithoutReadonly<Measurement>, options?: AxiosRequestConfig) {
+        return this.axios.post(
+            "/application/{id}/measurement".replace(/{id}/, String(params["id"])), data, options
+        );
+    }
+
+    private getMeasurement(params: {
+        'id': string,
+        'name': string
+    }, options?: AxiosRequestConfig) {
+        return this.axios.get<WithoutWriteonly<Measurement>>(
+            "/application/{id}/measurement/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])), options
+        );
+    }
+
+    private listMeasurements(params: {
         'id': string
     }, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<Measurement>[]>(
@@ -61,28 +78,39 @@ export default class {
         );
     }
 
-    private name_get(params: {
+    private listMeasurementValues(params: {
         'id': string,
-        'name': string
+        'name': string,
+        'sort': "created" | "value",
+        'dir': "asc" | "desc",
+        'page': number,
+        'size': 10 | 20
     }, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<MeasurementValues>>(
-            "/application/{id}/measurements/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])), options
+            "/application/{id}/measurements/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])),
+            Object.assign(
+                {},
+                {
+                    params: pick(params, "sort", "dir", "page", "size"),
+                },
+                options
+            )
         );
     }
 
-    private applications_get(params: Record<string, never>, options?: AxiosRequestConfig) {
+    private listApplications(params: Record<string, never>, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<Application>[]>(
             "/applications", options
         );
     }
 
-    private login_post(params: Record<string, never>, data: WithoutReadonly<LoginRequest>, options?: AxiosRequestConfig) {
+    private login(params: Record<string, never>, data: WithoutReadonly<LoginRequest>, options?: AxiosRequestConfig) {
         return this.axios.post<WithoutWriteonly<LoginResponse>>(
             "/login", data, options
         );
     }
 
-    private logout_get(params: {
+    private logout(params: {
         'Authorization': string
     }, options?: AxiosRequestConfig) {
         return this.axios.get(
@@ -99,16 +127,18 @@ export default class {
 
     get Default() {
         return {
-            application_post: this.application_post.bind(this),
-            id_get: this.id_get.bind(this),
-            id_patch: this.id_patch.bind(this),
-            id_delete: this.id_delete.bind(this),
-            configuration_post: this.configuration_post.bind(this),
-            measurements_get: this.measurements_get.bind(this),
-            name_get: this.name_get.bind(this),
-            applications_get: this.applications_get.bind(this),
-            login_post: this.login_post.bind(this),
-            logout_get: this.logout_get.bind(this)
+            addApplication: this.addApplication.bind(this),
+            getApplication: this.getApplication.bind(this),
+            updateApplication: this.updateApplication.bind(this),
+            deleteApplication: this.deleteApplication.bind(this),
+            addConfiguration: this.addConfiguration.bind(this),
+            addMeasurement: this.addMeasurement.bind(this),
+            getMeasurement: this.getMeasurement.bind(this),
+            listMeasurements: this.listMeasurements.bind(this),
+            listMeasurementValues: this.listMeasurementValues.bind(this),
+            listApplications: this.listApplications.bind(this),
+            login: this.login.bind(this),
+            logout: this.logout.bind(this)
         };
     }
 }

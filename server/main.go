@@ -4,20 +4,24 @@ import (
 	"flag"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/pbloigu/gonfig/server/backend"
+	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/frontend"
-	"github.com/pbloigu/gonfig/server/repository"
+	"github.com/pbloigu/gonfig/server/measurements"
 	"github.com/rs/zerolog/log"
 )
 
 var params = struct {
-	backedPort   int
-	backendAddr  string
-	frontendPort int
-	frontendAddr string
-	dbLoc        string
+	backedPort    int
+	backendAddr   string
+	frontendPort  int
+	frontendAddr  string
+	dbLoc         string
+	measurementDb string
 }{
 	backedPort:   8081,
 	backendAddr:  "localhost",
@@ -28,10 +32,55 @@ var params = struct {
 
 func main() {
 	parseParams()
-	repository.StartDatabase(params.dbLoc)
+	parseEnv()
+	configurations.StartDatabase(params.dbLoc)
+	measurements.StartDatabase(params.measurementDb)
 	frontend.Start(frontend.Config{Port: params.frontendPort, Addr: params.frontendAddr})
 	backend.Start(backend.Config{Port: params.backedPort, Addr: params.backendAddr})
 	waitForTermination()
+}
+
+func parseEnv() {
+	if v := getEnvVariable("GONFIG_FRONTEND_PORT"); v != "" {
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			params.frontendPort = i
+		}
+	}
+
+	if v := getEnvVariable("GONFIG_BACKEND_PORT"); v != "" {
+		i, err := strconv.Atoi(v)
+		if err != nil {
+			params.backedPort = i
+		}
+	}
+
+	if v := getEnvVariable("GONFIG_FRONTEND_ADDR"); v != "" {
+		params.frontendAddr = v
+	}
+
+	if v := getEnvVariable("GONFIG_BACKEND_ADDR"); v != "" {
+		params.backendAddr = v
+	}
+
+	if v := getEnvVariable("GONFIG_DB_LOCATION"); v != "" {
+		params.dbLoc = v
+	}
+
+	if v := getEnvVariable("GONFIG_MEASUREMENT_DB"); v != "" {
+		params.measurementDb = v
+	}
+
+}
+
+func getEnvVariable(key string) string {
+	for _, e := range os.Environ() {
+		keyValue := strings.Split(e, "=")
+		if len(keyValue) == 2 && keyValue[0] == key {
+			return keyValue[1]
+		}
+	}
+	return ""
 }
 
 func parseParams() {
@@ -40,6 +89,7 @@ func parseParams() {
 	flag.IntVar(&params.backedPort, "backendPort", 8081, "Backend listen port. Default = 8081")
 	flag.StringVar(&params.backendAddr, "backendAddr", "localhost", "Listen address for the backend.")
 	flag.StringVar(&params.dbLoc, "dbLocation", "/tmp/database.sqlite", "Location of the database. Default = /tmp/database.sqlite")
+	flag.StringVar(&params.measurementDb, "measurementDb", "", "Database connection string for measurements. Onyl Mysql/MariaDB are supported.")
 
 	flag.Parse()
 }

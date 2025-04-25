@@ -142,9 +142,23 @@ components:
     Measurement:
       additionalProperties: false
       properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          example: https://example.com/schemas/Measurement.json
+          format: uri
+          readOnly: true
+          type: string
         lastValue:
-          $ref: "#/components/schemas/MeasurementValue"
+          nullable: true
+          readOnly: true
+          type: string
+        lastValueTime:
+          format: date-time
+          nullable: true
+          readOnly: true
+          type: string
         name:
+          maxLength: 128
           type: string
       required:
         - name
@@ -153,13 +167,13 @@ components:
       additionalProperties: false
       properties:
         data:
+          maxLength: 128
+          nullable: true
           type: string
         time:
           format: date-time
           readOnly: true
           type: string
-      required:
-        - data
       type: object
     MeasurementValues:
       additionalProperties: false
@@ -204,6 +218,7 @@ openapi: 3.0.3
 paths:
   /application:
     post:
+      operationId: addApplication
       requestBody:
         content:
           application/json:
@@ -227,6 +242,7 @@ paths:
         - apiKey: []
   /application/{id}:
     delete:
+      operationId: deleteApplication
       parameters:
         - description: Id of the application to delete.
           in: path
@@ -247,6 +263,7 @@ paths:
       security:
         - apiKey: []
     get:
+      operationId: getApplication
       parameters:
         - description: Id of the application to get.
           in: path
@@ -271,6 +288,7 @@ paths:
       security:
         - apiKey: []
     patch:
+      operationId: updateApplication
       parameters:
         - description: Id of the application to patch.
           in: path
@@ -303,6 +321,7 @@ paths:
         - apiKey: []
   /application/{id}/configuration:
     post:
+      operationId: addConfiguration
       parameters:
         - description: Id of the application.
           in: path
@@ -329,8 +348,70 @@ paths:
           description: Error
       security:
         - apiKey: []
+  /application/{id}/measurement:
+    post:
+      operationId: addMeasurement
+      parameters:
+        - description: Id of the application for which to add a new measurement.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application for which to add a new measurement.
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Measurement"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+  /application/{id}/measurement/{name}:
+    get:
+      operationId: getMeasurement
+      parameters:
+        - description: Id of the application for which to get the measurement.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application for which to get the measurement.
+            type: string
+        - description: Name of the measurement.
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Name of the measurement.
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Measurement"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
   /application/{id}/measurements:
     get:
+      operationId: listMeasurements
       parameters:
         - description: Id of the application to get.
           in: path
@@ -359,6 +440,7 @@ paths:
         - apiKey: []
   /application/{id}/measurements/{name}:
     get:
+      operationId: listMeasurementValues
       parameters:
         - description: Id of the application to get.
           in: path
@@ -374,6 +456,50 @@ paths:
           schema:
             description: Name of the measurement.
             type: string
+        - description: Sort by.
+          explode: false
+          in: query
+          name: sort
+          schema:
+            default: created
+            description: Sort by.
+            enum:
+              - created
+              - value
+            type: string
+        - description: Sort direction.
+          explode: false
+          in: query
+          name: dir
+          schema:
+            default: desc
+            description: Sort direction.
+            enum:
+              - asc
+              - desc
+            type: string
+        - description: Page number. 1-based, please.
+          explode: false
+          in: query
+          name: page
+          schema:
+            default: 1
+            description: Page number. 1-based, please.
+            format: int64
+            minimum: 1
+            type: integer
+        - description: Page size.
+          explode: false
+          in: query
+          name: size
+          schema:
+            default: 10
+            description: Page size.
+            enum:
+              - 10
+              - 20
+            format: int64
+            type: integer
       responses:
         "200":
           content:
@@ -391,6 +517,7 @@ paths:
         - apiKey: []
   /applications:
     get:
+      operationId: listApplications
       responses:
         "200":
           content:
@@ -411,6 +538,7 @@ paths:
         - apiKey: []
   /login:
     post:
+      operationId: login
       requestBody:
         content:
           application/json:
@@ -434,6 +562,7 @@ paths:
           description: Error
   /logout:
     get:
+      operationId: logout
       parameters:
         - in: header
           name: Authorization

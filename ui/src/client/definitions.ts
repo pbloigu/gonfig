@@ -72,11 +72,13 @@ export type LoginResponse = {
     token: string;
 };
 export type Measurement = {
-    lastValue?: MeasurementValue;
+    readonly $schema?: (string) & readonlyP;
+    readonly lastValue?: (string | null) & readonlyP;
+    readonly lastValueTime?: (string | null) & readonlyP;
     name: string;
 };
 export type MeasurementValue = {
-    data: string;
+    data?: string | null;
     readonly time?: (string) & readonlyP;
 };
 export type MeasurementValues = {

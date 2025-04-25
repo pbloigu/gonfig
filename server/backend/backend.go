@@ -30,17 +30,17 @@ func Start(c Config) {
 	humaWrapper := humagin.New(router, hc)
 	humaWrapper.UseMiddleware(getApiTokenAuthMiddleware(humaWrapper))
 
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}/configuration"), getConfiguration)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}/measurement/{name}"), getMeasurement)
-	huma.Register(humaWrapper, defineOperation(http.MethodPost, "/application/{id}/measurement/{name}"), addMeasurement)
-	huma.Register(humaWrapper, defineOperation(http.MethodPost, "/application/{id}/heartbeat"), doHeartbeat)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}/heartbeat"), getHeartbeat)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/configuration"), getConfiguration)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurement/{name}"), getMeasurement)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/measurement/{name}"), addMeasurement)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/heartbeat"), doHeartbeat)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/heartbeat"), getHeartbeat)
 
 	go router.Run(fmt.Sprintf("%s:%d", c.Addr, c.Port))
 	log.Info().Any("port", c.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started backend.")
 }
 
-func defineOperation(method string, path string) huma.Operation {
+func def(method string, path string) huma.Operation {
 	return huma.Operation{
 		Method: method,
 		Path:   path,

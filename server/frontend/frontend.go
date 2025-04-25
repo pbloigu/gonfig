@@ -47,16 +47,18 @@ func Start(c Config) {
 
 	humaWrapper.UseMiddleware(getApiTokenAuthMiddleware(humaWrapper))
 
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}"), getApplication)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}/measurements/{name}"), listMeasurementValues)
-	huma.Register(humaWrapper, defineOperation(http.MethodPost, "/application"), addApplication)
-	huma.Register(humaWrapper, defineOperation(http.MethodPatch, "/application/{id}"), updateApplication)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/applications"), listApplications)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/application/{id}/measurements"), listMeasurements)
-	huma.Register(humaWrapper, defineOperation(http.MethodDelete, "/application/{id}"), deleteApplication)
-	huma.Register(humaWrapper, defineOperation(http.MethodPost, "/application/{id}/configuration"), addConfiguration)
-	huma.Register(humaWrapper, defineOperation(http.MethodPost, "/login"), login)
-	huma.Register(humaWrapper, defineOperation(http.MethodGet, "/logout"), logout)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}", "getApplication"), getApplication)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements/{name}", "listMeasurementValues"), listMeasurementValues)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurement/{name}", "getMeasurement"), getMeasurement)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application", "addApplication"), addApplication)
+	huma.Register(humaWrapper, def(http.MethodPatch, "/application/{id}", "updateApplication"), updateApplication)
+	huma.Register(humaWrapper, def(http.MethodGet, "/applications", "listApplications"), listApplications)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements", "listMeasurements"), listMeasurements)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/measurement", "addMeasurement"), addMeasurement)
+	huma.Register(humaWrapper, def(http.MethodDelete, "/application/{id}", "deleteApplication"), deleteApplication)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/configuration", "addConfiguration"), addConfiguration)
+	huma.Register(humaWrapper, def(http.MethodPost, "/login", "login"), login)
+	huma.Register(humaWrapper, def(http.MethodGet, "/logout", "logout"), logout)
 
 	go router.Run(fmt.Sprintf("%s:%d", c.Addr, c.Port))
 	log.Info().Any("port", c.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started frontend.")
@@ -93,12 +95,13 @@ func staticHandler(engine *gin.Engine) {
 	})
 }
 
-func defineOperation(method string, path string) huma.Operation {
+func def(method string, path string, id string) huma.Operation {
 
 	if path == "/login" {
 		return huma.Operation{
-			Method: method,
-			Path:   path,
+			Method:      method,
+			Path:        path,
+			OperationID: id,
 		}
 	} else {
 		return huma.Operation{
@@ -107,6 +110,7 @@ func defineOperation(method string, path string) huma.Operation {
 			Security: []map[string][]string{
 				{"apiKey": {}},
 			},
+			OperationID: id,
 		}
 	}
 

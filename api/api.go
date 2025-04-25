@@ -20,13 +20,14 @@ type MeasurementValues struct {
 }
 
 type MeasurementValue struct {
-	Data string    `json:"data" maxLength:"128"`
-	Date time.Time `json:"time" readOnly:"true" required:"false"`
+	Data *string   `json:"data" maxLength:"128" required:"false" nullable:"true"`
+	Time time.Time `json:"time" readOnly:"true" required:"false" format:"date-time"`
 }
 
 type Measurement struct {
-	Name      string           `json:"name" requred:"true"`
-	LastValue MeasurementValue `json:"lastValue" required:"false"`
+	Name          string     `json:"name" requred:"true" maxLength:"128"`
+	LastValue     *string    `json:"lastValue" required:"false" readOnly:"true" nullable:"true"`
+	LastValueTime *time.Time `json:"lastValueTime" readOnly:"true" required:"false" format:"date-time" nullable:"true"`
 }
 
 type Application struct {

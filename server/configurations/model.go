@@ -1,4 +1,4 @@
-package repository
+package configurations
 
 import "time"
 
@@ -14,16 +14,4 @@ type Application struct {
 type Configuration struct {
 	CreatedAt time.Time
 	Data      string
-}
-
-type MeasurementValue struct {
-	CreatedAt time.Time
-	Data      string
-}
-
-type Measurement struct {
-	Id            int
-	LastValueTime time.Time
-	LastValue     string
-	Name          string
 }
