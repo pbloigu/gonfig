@@ -1,33 +1,33 @@
 <script lang="ts">
-    	import {
-		Button,
-		Input,
-		Label,
-		P,
-        Heading
-	} from 'svelte-5-ui-lib';
-    import {Login} from '../../service'
-    let username: string = '';
-    let password: string = '';
+	import { Button, Input, Label, P, Heading, Card } from 'flowbite-svelte';
+	import { Login } from '../../service';
+	let username: string = '';
+	let password: string = '';
 
-    function login(): void {
-        Login(username, password)
-    }
+	function login(): void {
+		Login(username, password);
+	}
 </script>
-<div class="mx-auto max-w-sm items-center gap-x-4 rounded-xl bg-white p-6 shadow-lg outline outline-black/5 dark:bg-slate-800 dark:shadow-none dark:-outline-offset-1 dark:outline-white/10">
-<div>
-    <Heading tag="h1">Login</Heading>
-</div>
-<div>
-    <Label for="app-name">Username</Label>
-    <Input id="app-name" type="text" bind:value={username}></Input>
-</div>
-<div>
-    <Label for="app-name">Password</Label>
-    <Input id="app-name" type="password" bind:value={password}></Input>
-</div>
-<div>
-    <Button color="secondary" onclick={login}>Login</Button>
-</div>
-</div>
 
+<div class="w-1/3 m-auto">
+	<Card class="p-4 sm:p-6 md:p-8">
+		<div>
+			<Heading tag="h1" class="mb-4 text-4xl font-extrabold  md:text-5xl lg:text-6xl">Login</Heading
+			>
+		</div>
+
+		<form class="flex flex-col space-y-6">
+			<div class="mb-6">
+				<Label for="username" class="mb-2 block">Username</Label>
+				<Input id="username" type="text" bind:value={username}></Input>
+			</div>
+			<div class="mb-6">
+				<Label for="password" class="mb-2 block">Password</Label>
+				<Input id="password" type="password" bind:value={password}></Input>
+			</div>
+			<div>
+				<Button color="secondary" onclick={login}>Login</Button>
+			</div>
+		</form>
+	</Card>
+</div>

@@ -24,7 +24,7 @@
 		TableBodyRow,
 		TableBodyCell,
 		Pagination
-	} from 'flowbite-svelte';
+	} from 'svelte-5-ui-lib';
 	import { AddMeasurement, ListMeasurements, ListMeasurementValues } from './service';
 	import type { MeasurementValues } from './client/definitions';
 	import { ArrowLeftOutline, ArrowRightOutline } from 'flowbite-svelte-icons';
@@ -44,29 +44,32 @@
 	let newMeasurement: string;
 	let selectedMeasurement: string | undefined = $state();
 	let helper = $state({ start: 1, end: 10, total: 100 });
-	let page = $state(1);
-
+	let page = $state(1)
+	const closeModal = stateView.close;
 	$effect(() => {
+		modalStatus = stateView.isOpen;
 		if (selectedMeasurement != undefined && selectedMeasurement.length > 0) {
 			ListMeasurementValues(selectedMeasurement, app.id, page).then((val: MeasurementValues) => {
 				measurementValues = val;
-				helper.total = val.total;
-				helper.start = (val.page - 1) * val.pageSize + 1;
-				helper.end = val.page * val.pageSize;
+				helper.total = val.total
+				helper.start = (val.page - 1) * val.pageSize + 1
+				helper.end = val.page * val.pageSize
 			});
 			action = 'SHOW_VALUES';
 		}
 	});
 
 	const previous = async () => {
-		if (page > 1) {
-			page = page - 1;
+		if(page > 1) {
+			page = page - 1
 		} else {
-			page = 1;
+			page = 1
 		}
-	};
+	}
 
-	const next = async () => {};
+	const next = async () => {
+		if (page == )
+	}
 
 	async function getMeasurements() {
 		measurementNames = [] as MeasurementName[];
@@ -80,7 +83,7 @@
 
 	const showState = async () => {
 		await getMeasurements();
-		modalStatus = true;
+		stateView.open();
 	};
 	function addMeasurement() {
 		action = 'ADD_MEASUREMENT';
@@ -93,7 +96,7 @@
 </script>
 
 <Button color="secondary" onclick={showState}>View</Button>
-<Modal title="App state" bind:open={modalStatus}>
+<Modal title="App state" {modalStatus} {closeModal}>
 	<P>App ID: {app.id}</P>
 	{#if selectedMeasurement != undefined && selectedMeasurement.length > 0}
 		<P>Measurement: {selectedMeasurement}</P>

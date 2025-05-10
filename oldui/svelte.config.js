@@ -6,6 +6,9 @@ const config = {
 	// Consult https://svelte.dev/docs/kit/integrations
 	// for more information about preprocessors
 	preprocess: vitePreprocess(),
+	compilerOptions: {
+        customElement: true,
+    },
 
 	kit: {
 		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
@@ -18,11 +21,7 @@ const config = {
 			precompress: false,
 			strict: true
 		})
-	},
-	compilerOptions: {
-		customElement: true
 	}
-
 };
 
 export default config;

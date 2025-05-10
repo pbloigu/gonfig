@@ -1,11 +1,7 @@
 <script lang="ts">
 	import '../app.css';
-	import { DarkMode } from 'flowbite-svelte';
 	let { children } = $props();
+	import { Darkmode } from 'svelte-5-ui-lib';
 </script>
-<DarkMode />
-<div class="min-w-full">
+<Darkmode />
 {@render children()}
-</div>
-
-

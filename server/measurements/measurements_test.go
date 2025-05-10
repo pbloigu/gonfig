@@ -81,7 +81,7 @@ func TestGenerateSomeData(t *testing.T) {
 	var val string
 	for i := range 20 {
 		val = fmt.Sprintf("value_%d", i)
-		PeristMeasurement("ddc22738-b45e-4922-81f8-77017e800eb8", Measurement{
+		PeristMeasurement("3db49a19-1f9e-4a63-a374-16567a3e1ce4", Measurement{
 			Name:      "test1",
 			LastValue: &val,
 		})

@@ -7,17 +7,11 @@
 		TableBody,
 		TableBodyRow,
 		TableBodyCell,
-		Navbar,
-		NavBrand,
-		NavUl,
-		Button,
-
-		NavLi
-
-	} from 'flowbite-svelte';
-
-	import EditConfig from '../EditConfig.svelte';
-	import AddApplication from '../AddApplication.svelte';
+		Navbar, NavBrand, NavUl, Button
+	} from 'svelte-5-ui-lib';
+	
+	import EditConfig  from '../EditConfig.svelte';
+	import AddApplication from '../AddApplication.svelte'
 	import DeleteApplication from '../DeleteApplication.svelte';
 	import { ListApplications, Logout } from '../service';
 	import ViewMeasurements from '../ViewMeasurements.svelte';
@@ -27,31 +21,30 @@
 	let tableItems = $state(data.apps);
 
 	let dataChanged = () => {
-		console.log('Data changed.');
+		console.log("Data changed.")
 		ListApplications().then((value) => {
-			tableItems = value;
-		});
-	};
+			tableItems = value
+		})
+	}
 
 	let logout = () => {
-		Logout();
-	};
+		Logout()
+	}
 </script>
+<Navbar breakPoint="md" hamburgerMenu={false}>
+	{#snippet brand()}
+	<NavBrand siteName="Welcome to Gonfig"></NavBrand>
+	{/snippet}
 
-<Navbar>
-	<NavBrand>
-		<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white"
-			>Welcome to Gonfig</span
-		>
-	</NavBrand>
-	<NavUl class="order-1">
-		<NavLi>
-      <div class="flex items-center space-x-1 md:order-2">
-        <AddApplication {dataChanged}></AddApplication>
-        <Button color="red" onclick={logout}>Logout</Button>
-      </div>
-    </NavLi>
-	</NavUl>
+	{#snippet navSlotBlock()}
+    <div class="flex items-center space-x-1 md:order-2">
+      <AddApplication {dataChanged}></AddApplication>
+	  <Button color="red" onclick={logout}>Logout</Button>
+    </div>
+  	{/snippet}
+	  <NavUl class="order-1" >
+		<p></p>
+	  </NavUl>
 </Navbar>
 <Table id="hello">
 	<TableHead>
@@ -73,3 +66,4 @@
 		{/each}
 	</TableBody>
 </Table>
+

@@ -17,20 +17,25 @@
 		Toolbar,
 		ToolbarGroup,
 		ToolbarButton
-	} from 'flowbite-svelte';
+	} from 'svelte-5-ui-lib';
 	import { CodeOutline } from 'flowbite-svelte-icons';
 	import { type Application } from './client/definitions';
 	import { AddApplication } from './service';
 	let { dataChanged } = $props();
 	let app: Application = $state({ name: '', configuration: { data: '' } });
-	
+	const appView = uiHelpers();
+	const closeModal = () => {
+		appView.close();
+	};
 
 	let modalStatus = $state(false);
 
-	
+	$effect(() => {
+		modalStatus = appView.isOpen;
+	});
 	const openDialog = () => {
 		app = { name: '', configuration: { data: '' } };
-		modalStatus = true
+		appView.open();
 	};
 	const saveApplication = () => {
 		AddApplication(app).then((value) => {
@@ -42,7 +47,7 @@
 
 <Button size="sm" color="secondary" onclick={openDialog}>Add application</Button>
 
-<Modal title="Application details" bind:open={modalStatus}>
+<Modal title="Application details" {modalStatus} {closeModal}>
 	{#if app.id == undefined}
 		<form>
 			<P>

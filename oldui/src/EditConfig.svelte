@@ -18,29 +18,31 @@
 		ToolbarButton,
 		ToolbarGroup,
 		uiHelpers
-	} from 'flowbite-svelte';
+	} from 'svelte-5-ui-lib';
 	import { CodeOutline } from 'flowbite-svelte-icons';
 	import { UpdateConfiguration } from './service';
 	let { app } = $props();
 
-	
+	const configView = uiHelpers();
 	let modalStatus = $state(false);
-	
-	
+	const closeModal = configView.close;
+	$effect(() => {
+		modalStatus = configView.isOpen;
+	});
 
 	const showConfig = () => {
-		modalStatus = true
+		configView.open();
 	};
 
 	const saveConfig = () => {
 		UpdateConfiguration(app.id, app.configuration.data).then((value) => {
-			modalStatus = false
+			configView.close()
 		})
 	}
 </script>
 
 <Button color="secondary" onclick={showConfig}>Edit</Button>
-<Modal title="App config" bind:open={modalStatus}>
+<Modal title="App config" {modalStatus} {closeModal}>
 	<form>
 		<P>
 			<!-- svelte-ignore binding_property_non_reactive -->

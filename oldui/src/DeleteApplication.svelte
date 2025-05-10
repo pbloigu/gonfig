@@ -9,25 +9,31 @@
 />
 
 <script lang="ts">
-	import { Button, P, Modal, uiHelpers } from 'flowbite-svelte';
+	import { Button, P, Modal, uiHelpers } from 'svelte-5-ui-lib';
 	import { DeleteApplication } from './service';
 	let { app, dataChanged } = $props();
 
+	const confirmView = uiHelpers();
+
 	let modalStatus = $state(false);
+	const closeModal = confirmView.close;
+	$effect(() => {
+		modalStatus = confirmView.isOpen;
+	});
 
 	const showConfirm = () => {
-		modalStatus = true
+		confirmView.open();
 	};
 	const doDelete = () => {
 		DeleteApplication(app.id).then((value) => {
 			dataChanged();
-			modalStatus = false;
+			closeModal();
 		});
 	};
 </script>
 
 <Button color="red" onclick={showConfirm}>Delete</Button>
-<Modal title="Confirm application delete" bind:open={modalStatus}>
+<Modal title="Confirm application delete" {modalStatus} {closeModal}>
 	<P>
 		Application {app.id} will be deleted along with any configuration and state it has.
 	</P>
@@ -35,7 +41,7 @@
 	<P>
 		<Button color="red" onclick={doDelete}>Yes</Button><Button
 			color="alternative"
-			onclick={() => {modalStatus = false}}>No</Button
+			onclick={closeModal}>No</Button
 		>
 	</P>
 </Modal>
