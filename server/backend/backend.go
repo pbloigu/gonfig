@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,8 +17,10 @@ type Config struct {
 	Addr string
 }
 
-func Start(c Config) {
+var srv service.Service
 
+func Start(c Config, s service.Service) {
+	srv = s
 	router := gin.Default()
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 

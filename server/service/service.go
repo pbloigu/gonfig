@@ -10,6 +10,33 @@ import (
 	"github.com/pbloigu/gonfig/server/measurements"
 )
 
+// Service interface with all public functions in this file
+type Service interface {
+	NewPagination(size int, defaultSize int, page int) Pargination
+	NewSort(sort string, defaultSort string, dir string) Sort
+	DoHeartbeat(appId string)
+	GetHartbeat(appId string) api.Heartbeat
+	UpdateApplication(application api.Application) api.Application
+	AddApplication(application api.Application) api.Application
+	GetApplication(id string) api.Application
+	ListApplications() []api.Application
+	DeleteApplication(id string)
+	AddConfiguration(appId string, configuration api.Configuration)
+	AddMeasurement(appId string, measurement api.Measurement)
+	InitMeasurement(appId string, measurement api.Measurement)
+	GetConfiguration(appId string) api.Configuration
+	GetMeasurement(appId string, measurementName string) api.Measurement
+	ListMeasurementValues(appId string, measurementName string, sort Sort, pagination Pargination) api.MeasurementValues
+	ListMeasurements(appId string) []api.Measurement
+	IsAllowed(appId string, apiKey string) bool
+	Login(login string, password string) bool
+}
+
+type s struct {
+	m measurements.Measurements
+	c configurations.Configurations
+}
+
 var hb = make(map[string]time.Time)
 
 type Direction string
@@ -29,7 +56,24 @@ type Pargination struct {
 	Size int
 }
 
-func NewPagination(size int, defaultSize int, page int) Pargination {
+func New(dbLoc string, measurementDb string) Service {
+	mch := make(chan measurements.Measurements)
+	cch := make(chan configurations.Configurations)
+
+	go func() {
+		mch <- measurements.New(measurementDb)
+	}()
+	go func() {
+		cch <- configurations.New(dbLoc)
+	}()
+
+	return &s{
+		m: <-mch,
+		c: <-cch,
+	}
+}
+
+func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
 	return Pargination{
 		Page: func() int {
 			if page < 1 {
@@ -48,7 +92,7 @@ func NewPagination(size int, defaultSize int, page int) Pargination {
 	}
 }
 
-func NewSort(sort string, defaultSort string, dir string) Sort {
+func (s *s) NewSort(sort string, defaultSort string, dir string) Sort {
 	return Sort{
 		Sort: func() string {
 			if sort == "" {
@@ -69,29 +113,29 @@ func NewSort(sort string, defaultSort string, dir string) Sort {
 	}
 }
 
-func DoHeartbeat(appId string) {
+func (s *s) DoHeartbeat(appId string) {
 	hb[appId] = time.Now()
 }
 
-func GetHartbeat(appId string) api.Heartbeat {
+func (s *s) GetHartbeat(appId string) api.Heartbeat {
 	return api.Heartbeat{
 		Time: hb[appId],
 	}
 }
 
-func UpdateApplication(application api.Application) api.Application {
-	configurations.UpdateApplication(configurations.Application{
+func (s *s) UpdateApplication(application api.Application) api.Application {
+	s.c.UpdateApplication(configurations.Application{
 		Id:   application.Id,
 		Name: application.Name,
 		Configuration: configurations.Configuration{
 			Data: application.Configuration.Data,
 		},
 	})
-	return GetApplication(application.Id)
+	return s.GetApplication(application.Id)
 }
 
-func AddApplication(application api.Application) api.Application {
-	a := configurations.PersistApplication(configurations.Application{
+func (s *s) AddApplication(application api.Application) api.Application {
+	a := s.c.PersistApplication(configurations.Application{
 		Id:     uuid.NewString(),
 		Name:   application.Name,
 		ApiKey: uuid.NewString(),
@@ -108,11 +152,10 @@ func AddApplication(application api.Application) api.Application {
 			Date: a.Configuration.CreatedAt,
 		},
 	}
-
 }
 
-func GetApplication(id string) api.Application {
-	a := configurations.GetApplication(id)
+func (s *s) GetApplication(id string) api.Application {
+	a := s.c.GetApplication(id)
 	return api.Application{
 		Id:   a.Id,
 		Name: a.Name,
@@ -123,9 +166,9 @@ func GetApplication(id string) api.Application {
 	}
 }
 
-func ListApplications() []api.Application {
+func (s *s) ListApplications() []api.Application {
 	result := make([]api.Application, 0)
-	for _, a := range configurations.ListApplications() {
+	for _, a := range s.c.ListApplications() {
 		result = append(result, api.Application{
 			Id:   a.Id,
 			Name: a.Name,
@@ -138,38 +181,38 @@ func ListApplications() []api.Application {
 	return result
 }
 
-func DeleteApplication(id string) {
-	configurations.DeleteApplication(id)
-	measurements.DeleteApplication(id)
+func (s *s) DeleteApplication(id string) {
+	s.c.DeleteApplication(id)
+	s.m.DeleteApplication(id)
 }
 
-func AddConfiguration(appId string, configuration api.Configuration) {
-	configurations.PersistConfiguration(appId, configurations.Configuration{
+func (s *s) AddConfiguration(appId string, configuration api.Configuration) {
+	s.c.PersistConfiguration(appId, configurations.Configuration{
 		Data: configuration.Data,
 	})
 }
 
-func AddMeasurement(appId string, measurement api.Measurement) {
-	measurements.PeristMeasurement(appId, measurements.Measurement{
+func (s *s) AddMeasurement(appId string, measurement api.Measurement) {
+	s.m.PeristMeasurement(appId, measurements.Measurement{
 		Name:      measurement.Name,
 		LastValue: measurement.LastValue,
 	})
 }
 
-func InitMeasurement(appId string, measurement api.Measurement) {
-	measurements.InitMeasurement(appId, measurement.Name)
+func (s *s) InitMeasurement(appId string, measurement api.Measurement) {
+	s.m.InitMeasurement(appId, measurement.Name)
 }
 
-func GetConfiguration(appId string) api.Configuration {
-	c := configurations.GetConfiguration(appId)
+func (s *s) GetConfiguration(appId string) api.Configuration {
+	c := s.c.GetConfiguration(appId)
 	return api.Configuration{
 		Data: c.Data,
 		Date: c.CreatedAt,
 	}
 }
 
-func GetMeasurement(appId string, measurementName string) api.Measurement {
-	m := measurements.GetMeasurement(appId, measurementName)
+func (s *s) GetMeasurement(appId string, measurementName string) api.Measurement {
+	m := s.m.GetMeasurement(appId, measurementName)
 	return api.Measurement{
 		Name:          m.Name,
 		LastValue:     m.LastValue,
@@ -186,8 +229,8 @@ func timePtr(unixTs *int) *time.Time {
 	}
 }
 
-func ListMeasurementValues(appId string, measurementName string, sort Sort, pagination Pargination) api.MeasurementValues {
-	m := measurements.GetMeasurement(appId, measurementName)
+func (s *s) ListMeasurementValues(appId string, measurementName string, sort Sort, pagination Pargination) api.MeasurementValues {
+	m := s.m.GetMeasurement(appId, measurementName)
 	if m != (measurements.Measurement{}) {
 		result := api.MeasurementValues{
 			Measurement: api.Measurement{
@@ -197,7 +240,7 @@ func ListMeasurementValues(appId string, measurementName string, sort Sort, pagi
 			},
 			Values: func() []api.MeasurementValue {
 				mvs := make([]api.MeasurementValue, 0)
-				for _, mv := range measurements.ListMeasurementValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
+				for _, mv := range s.m.ListMeasurementValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
 					mvs = append(mvs, api.MeasurementValue{
 						Data: mv.Data,
 						Time: time.Unix(int64(mv.CreatedAt), 0),
@@ -206,19 +249,18 @@ func ListMeasurementValues(appId string, measurementName string, sort Sort, pagi
 				return mvs
 			}(),
 		}
-		result.Total = measurements.CountMeasurementValues(m.Id)
+		result.Total = s.m.CountMeasurementValues(m.Id)
 		result.Page = pagination.Page
 		result.PageSize = pagination.Size
 		return result
 	} else {
 		return api.MeasurementValues{}
 	}
-
 }
 
-func ListMeasurements(appId string) []api.Measurement {
+func (s *s) ListMeasurements(appId string) []api.Measurement {
 	result := make([]api.Measurement, 0)
-	for _, m := range measurements.ListMeasurements(appId) {
+	for _, m := range s.m.ListMeasurements(appId) {
 		result = append(result, api.Measurement{
 			Name:          m.Name,
 			LastValue:     m.LastValue,
@@ -228,10 +270,10 @@ func ListMeasurements(appId string) []api.Measurement {
 	return result
 }
 
-func IsAllowed(appId string, apiKey string) bool {
-	return configurations.IsAllowed(appId, apiKey)
+func (s *s) IsAllowed(appId string, apiKey string) bool {
+	return s.c.IsAllowed(appId, apiKey)
 }
 
-func Login(login string, password string) bool {
-	return configurations.Login(login, password)
+func (s *s) Login(login string, password string) bool {
+	return s.c.Login(login, password)
 }

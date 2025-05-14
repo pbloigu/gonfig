@@ -11,7 +11,6 @@ import (
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pbloigu/gonfig/api"
-	"github.com/pbloigu/gonfig/server/service"
 )
 
 type tokenStorage struct {
@@ -45,14 +44,14 @@ func (ts *tokenStorage) isValid(token string, expirySeconds int64) bool {
 func getApplication(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{ Body api.Application }, error) {
-	app := service.GetApplication(input.Id)
+	app := srv.GetApplication(input.Id)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
 func listMeasurements(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{ Body []api.Measurement }, error) {
-	m := service.ListMeasurements(input.Id)
+	m := srv.ListMeasurements(input.Id)
 	return &struct{ Body []api.Measurement }{Body: m}, nil
 }
 
@@ -64,10 +63,10 @@ func listMeasurementValues(ctx context.Context, input *struct {
 	Page int    `query:"page" required:"false" doc:"Page number. 1-based, please." minimum:"1" default:"1"`
 	Size int    `query:"size" required:"false" maximum:"50" doc:"Page size." default:"10"`
 }) (*struct{ Body api.MeasurementValues }, error) {
-	mvs := service.ListMeasurementValues(input.Id,
+	mvs := srv.ListMeasurementValues(input.Id,
 		input.Name,
-		service.NewSort(input.Sort, "created", input.Dir),
-		service.NewPagination(input.Size, 10, input.Page),
+		srv.NewSort(input.Sort, "created", input.Dir),
+		srv.NewPagination(input.Size, 10, input.Page),
 	)
 	return &struct{ Body api.MeasurementValues }{Body: mvs}, nil
 }
@@ -77,7 +76,7 @@ func addApplication(ctx context.Context, input *struct {
 }) (*struct {
 	Body api.Application
 }, error) {
-	app := service.AddApplication(input.Body)
+	app := srv.AddApplication(input.Body)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
@@ -85,7 +84,7 @@ func addMeasurement(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application for which to add a new measurement."`
 	Body api.Measurement
 }) (*struct{}, error) {
-	service.InitMeasurement(input.Id, input.Body)
+	srv.InitMeasurement(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 
@@ -98,7 +97,7 @@ func getMeasurement(c context.Context, input *struct {
 	response := struct {
 		Body api.Measurement
 	}{
-		Body: service.GetMeasurement(input.Id, input.Name),
+		Body: srv.GetMeasurement(input.Id, input.Name),
 	}
 	return &response, nil
 }
@@ -108,7 +107,7 @@ func updateApplication(c context.Context, input *struct {
 	Body api.Application `doc:"The application"`
 }) (*struct{ Body api.Application }, error) {
 
-	app := service.UpdateApplication(input.Body)
+	app := srv.UpdateApplication(input.Body)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
@@ -118,7 +117,7 @@ func listApplications(c context.Context, input *struct{}) (*struct {
 	response := struct {
 		Body []api.Application
 	}{
-		Body: service.ListApplications(),
+		Body: srv.ListApplications(),
 	}
 	return &response, nil
 }
@@ -126,7 +125,7 @@ func listApplications(c context.Context, input *struct{}) (*struct {
 func deleteApplication(c context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to delete."`
 }) (*struct{}, error) {
-	service.DeleteApplication(input.Id)
+	srv.DeleteApplication(input.Id)
 	return &struct{}{}, nil
 }
 
@@ -137,7 +136,7 @@ func addConfiguration(c context.Context, input *struct {
 
 	configuration := api.Configuration{}
 	configuration.Data = input.Body.Data
-	service.AddConfiguration(input.Id, configuration)
+	srv.AddConfiguration(input.Id, configuration)
 	return &struct{}{}, nil
 }
 
@@ -149,11 +148,11 @@ func logout(c context.Context, input *struct {
 }
 
 func login(c context.Context, input *struct {
-	Body api.LoginRequest `doc:"Login credentials."`
+	Body api.LoginRequest `doc:"Login credentialsrv."`
 }) (*struct {
 	Body api.LoginResponse `doc:"Bearer token."`
 }, error) {
-	if service.Login(input.Body.Username, input.Body.Password) {
+	if srv.Login(input.Body.Username, input.Body.Password) {
 		r := api.LoginResponse{
 			Token:  uuid.NewString(),
 			Expiry: 3600,

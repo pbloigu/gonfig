@@ -8,7 +8,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-http-utils/headers"
 	"github.com/pbloigu/gonfig/api"
-	"github.com/pbloigu/gonfig/server/service"
 )
 
 func getConfiguration(c context.Context, input *struct {
@@ -19,7 +18,7 @@ func getConfiguration(c context.Context, input *struct {
 	response := struct {
 		Body api.Configuration
 	}{
-		Body: service.GetConfiguration(input.Id),
+		Body: srv.GetConfiguration(input.Id),
 	}
 	return &response, nil
 }
@@ -33,7 +32,7 @@ func getMeasurement(c context.Context, input *struct {
 	response := struct {
 		Body api.Measurement
 	}{
-		Body: service.GetMeasurement(input.Id, input.Name),
+		Body: srv.GetMeasurement(input.Id, input.Name),
 	}
 	return &response, nil
 }
@@ -41,7 +40,7 @@ func getMeasurement(c context.Context, input *struct {
 func doHeartbeat(c context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application for which to update heartbeat."`
 }) (*struct{}, error) {
-	service.DoHeartbeat(input.Id)
+	srv.DoHeartbeat(input.Id)
 	return &struct{}{}, nil
 }
 
@@ -51,7 +50,7 @@ func getHeartbeat(c context.Context, input *struct {
 	Body api.Heartbeat
 }, error) {
 	return &struct{ Body api.Heartbeat }{
-		Body: service.GetHartbeat(input.Id),
+		Body: srv.GetHartbeat(input.Id),
 	}, nil
 }
 
@@ -60,7 +59,7 @@ func addMeasurement(c context.Context, input *struct {
 	Name string `path:"name" doc:"The name of the measurement."`
 	Body api.Measurement
 }) (*struct{}, error) {
-	service.AddMeasurement(input.Id, input.Body)
+	srv.AddMeasurement(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 
@@ -68,7 +67,7 @@ func isAllowed(authHeader string, appId string) bool {
 	if authHeader != "" && appId != "" {
 		for i, p := range strings.Split(authHeader, " ") {
 			if i == 1 {
-				return service.IsAllowed(appId, strings.TrimSpace(p))
+				return srv.IsAllowed(appId, strings.TrimSpace(p))
 			}
 		}
 	}

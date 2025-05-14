@@ -8,15 +8,42 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type Configurations interface {
+	DeleteApplication(id string)
+	GetApplication(id string) Application
+	GetConfiguration(appId string) Configuration
+	IsAllowed(id string, apiKey string) bool
+	ListApplications() []Application
+	Login(login string, password string) bool
+	PersistApplication(a Application) Application
+	PersistConfiguration(applicationId string, c Configuration)
+	UpdateApplication(a Application)
+}
+
+type c struct {
+	db database.Database
+}
+
+func New(dbLoc string) Configurations {
+	return &c{
+		db: startDatabase(dbLoc),
+	}
+}
+
 //go:embed schema.sql
 var ddl string
 
-var db database.Database
+func startDatabase(dbLoc string) database.Database {
+	return database.New(connString(dbLoc), ddl, "sqlite")
+}
+
+func connString(dbLoc string) string {
+	return "file:///" + dbLoc + "?_pragma=foreign_keys(1)"
+}
 
 // Public functions in alphabetical order
-func DeleteApplication(id string) {
-
-	_, err := db.DoInTransaction(func(dba database.Context) (any, error) {
+func (c *c) DeleteApplication(id string) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
 		_, err := dba.Exec("DELETE FROM Configuration WHERE application_id = ?", id)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Could not delete configurations.")
@@ -35,17 +62,17 @@ func DeleteApplication(id string) {
 	}
 }
 
-func GetApplication(id string) Application {
-	a, err := getApplication(id, false)
+func (c *c) GetApplication(id string) Application {
+	a, err := c.getApplication(id, false)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("Could not get application")
 	}
 	return a
 }
 
-func GetConfiguration(appId string) Configuration {
-	c := Configuration{}
-	r, err := db.Context().Query(
+func (c *c) GetConfiguration(appId string) Configuration {
+	conf := Configuration{}
+	r, err := c.db.Context().Query(
 		`SELECT 
 			data,
 			created
@@ -57,16 +84,16 @@ func GetConfiguration(appId string) Configuration {
 	}
 	defer r.Close()
 	if r.Next() {
-		err = r.Scan(&c.Data, &c.CreatedAt)
+		err = r.Scan(&conf.Data, &conf.CreatedAt)
 		if err != nil {
 			log.Panic().AnErr("error", err).Msg("Could not get configuration.")
 		}
 	}
-	return c
+	return conf
 }
 
-func IsAllowed(id string, apiKeyHash string) bool {
-	r, err := db.Context().Query("SELECT 1 FROM Application WHERE id = ? AND api_key = ?", id, apiKeyHash)
+func (c *c) IsAllowed(id string, apiKey string) bool {
+	r, err := c.db.Context().Query("SELECT 1 FROM Application WHERE id = ? AND api_key = ?", id, apiKey)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 	}
@@ -74,9 +101,9 @@ func IsAllowed(id string, apiKeyHash string) bool {
 	return r.Next()
 }
 
-func ListApplications() []Application {
+func (c *c) ListApplications() []Application {
 	result := make([]Application, 0)
-	rows, err := db.Context().Query(
+	rows, err := c.db.Context().Query(
 		`SELECT 
 			a.id, 
 			a.name,
@@ -103,8 +130,8 @@ func ListApplications() []Application {
 	return result
 }
 
-func Login(login string, password string) bool {
-	r, err := db.Context().Query("SELECT 1 FROM User WHERE login = ? AND password = ?", login, password)
+func (c *c) Login(login string, password string) bool {
+	r, err := c.db.Context().Query("SELECT 1 FROM User WHERE login = ? AND password = ?", login, password)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 	}
@@ -112,8 +139,8 @@ func Login(login string, password string) bool {
 	return r.Next()
 }
 
-func PersistApplication(a Application) Application {
-	_, err := db.DoInTransaction(func(dba database.Context) (any, error) {
+func (c *c) PersistApplication(a Application) Application {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
 		_, err := dba.Exec(
 			`INSERT INTO Application
 				(id, name, api_key)
@@ -136,16 +163,16 @@ func PersistApplication(a Application) Application {
 		log.Panic().AnErr("error", err).Msg("Could not persist application.")
 	}
 
-	a, err = getApplication(a.Id, true)
+	a, err = c.getApplication(a.Id, true)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("Could not get application.")
 	}
 	return a
 }
 
-func PersistConfiguration(applicationId string, c Configuration) {
-	_, err := db.DoInTransaction(func(dba database.Context) (any, error) {
-		if err := persistConfiguration(dba, applicationId, c); err != nil {
+func (c *c) PersistConfiguration(applicationId string, conf Configuration) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		if err := persistConfiguration(dba, applicationId, conf); err != nil {
 			log.Error().AnErr("error", err).Msg("Could not persist configuration.")
 			return nil, err
 		} else {
@@ -157,16 +184,8 @@ func PersistConfiguration(applicationId string, c Configuration) {
 	}
 }
 
-func StartDatabase(dbLoc string) {
-	if db != nil {
-		log.Error().Msg("Database already started. You're good to go, but you might want to check what's going on.")
-		return
-	}
-	db = database.New(connString(dbLoc), ddl, "sqlite")
-}
-
-func UpdateApplication(a Application) {
-	_, err := db.DoInTransaction(func(dba database.Context) (any, error) {
+func (c *c) UpdateApplication(a Application) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
 		_, err := dba.Exec(
 			`UPDATE Application
 				SET
@@ -192,21 +211,18 @@ func UpdateApplication(a Application) {
 }
 
 // Private functions in alphabetical order
-func connString(dbLoc string) string {
-	return "file:///" + dbLoc + "?_pragma=foreign_keys(1)"
-}
 
-func getApplication(id string, withApiKey bool) (Application, error) {
+func (c *c) getApplication(id string, withApiKey bool) (Application, error) {
 	a := Application{
 		Configuration: Configuration{},
 	}
-	r, err := db.Context().Query(
+	r, err := c.db.Context().Query(
 		`SELECT 
 			a.id, 
 			a.name,
 			CASE
 				WHEN ? THEN a.api_key
-				ELSE null
+				ELSE ''
 			END as api_key,
 			c.data,
 			c.created

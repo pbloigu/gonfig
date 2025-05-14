@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pbloigu/gonfig/server/backend"
-	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/frontend"
-	"github.com/pbloigu/gonfig/server/measurements"
+	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,13 +31,29 @@ var params = struct {
 }
 
 func main() {
+	start := time.Now()
 	parseParams()
 	parseEnv()
-	configurations.StartDatabase(params.dbLoc)
-	measurements.StartDatabase(params.measurementDb)
-	frontend.Start(frontend.Config{Port: params.frontendPort, Addr: params.frontendAddr})
-	backend.Start(backend.Config{Port: params.backedPort, Addr: params.backendAddr})
+	startApis(service.New(params.dbLoc, params.measurementDb))
+	log.Info().TimeDiff("elapsedMs", time.Now(), start).Msg("System ready.")
 	waitForTermination()
+}
+
+func startApis(s service.Service) {
+	ch := make(chan bool)
+
+	go func() {
+		frontend.Start(frontend.Config{Port: params.frontendPort, Addr: params.frontendAddr}, s)
+		ch <- true
+	}()
+
+	go func() {
+		backend.Start(backend.Config{Port: params.backedPort, Addr: params.backendAddr}, s)
+		ch <- true
+	}()
+
+	<-ch
+	<-ch
 }
 
 func parseEnv() {
