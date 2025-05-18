@@ -2,6 +2,10 @@ package api
 
 import "time"
 
+type CC struct {
+	Id string `json:"id" nullable:"false" required:"true"`
+}
+
 type Heartbeat struct {
 	Time time.Time `json:"time"`
 }

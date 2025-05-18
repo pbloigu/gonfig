@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cc"
 	"flag"
 	"os"
 	"os/signal"
@@ -20,6 +21,8 @@ var params = struct {
 	backendAddr   string
 	frontendPort  int
 	frontendAddr  string
+	ccPort        int
+	ccAddr        string
 	dbLoc         string
 	measurementDb string
 }{
@@ -52,8 +55,16 @@ func startApis(s service.Service) {
 		ch <- true
 	}()
 
-	<-ch
-	<-ch
+	go func() {
+		cc.Start(cc.Config{Port: params.ccPort, Addr: params.ccAddr})
+		ch <- true
+	}()
+
+	for range 3 {
+		<-ch
+	}
+
+	log.Info().Msg("API endpoints started.")
 }
 
 func parseEnv() {
@@ -102,6 +113,8 @@ func getEnvVariable(key string) string {
 func parseParams() {
 	flag.IntVar(&params.frontendPort, "frontendPort", 8080, "Frontend listen port. Default = 8080")
 	flag.StringVar(&params.frontendAddr, "frontendAddr", "localhost", "Listen address for the frontend.")
+	flag.IntVar(&params.ccPort, "ccPort", 9000, "Command channel listen port. Default = 9000")
+	flag.StringVar(&params.ccAddr, "ccAddr", "localhost", "Listen address for the command channel.")
 	flag.IntVar(&params.backedPort, "backendPort", 8081, "Backend listen port. Default = 8081")
 	flag.StringVar(&params.backendAddr, "backendAddr", "localhost", "Listen address for the backend.")
 	flag.StringVar(&params.dbLoc, "dbLocation", "/tmp/database.sqlite", "Location of the database. Default = /tmp/database.sqlite")

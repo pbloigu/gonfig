@@ -21,6 +21,12 @@ var srv service.Service
 
 func Start(c Config, s service.Service) {
 	srv = s
+
+	startRestApi(c)
+
+}
+
+func startRestApi(c Config) {
 	router := gin.Default()
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 
@@ -40,7 +46,7 @@ func Start(c Config, s service.Service) {
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/heartbeat"), getHeartbeat)
 
 	go router.Run(fmt.Sprintf("%s:%d", c.Addr, c.Port))
-	log.Info().Any("port", c.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started backend.")
+	log.Info().Any("port", c.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started backend REST services.")
 }
 
 func def(method string, path string) huma.Operation {

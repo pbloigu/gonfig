@@ -1,6 +1,6 @@
 module github.com/pbloigu/gonfig/server
 
-go 1.24.0
+go 1.24.2
 
 require (
 	github.com/danielgtaylor/huma/v2 v2.32.0
@@ -31,6 +31,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/icza/gox v0.2.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.17.10 // indirect
