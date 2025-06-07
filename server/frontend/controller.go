@@ -11,6 +11,7 @@ import (
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/service"
 )
 
 type tokenStorage struct {
@@ -41,54 +42,58 @@ func (ts *tokenStorage) isValid(token string, expirySeconds int64) bool {
 	return !(time.Now().Unix() > ts.tokens[token]+expirySeconds)
 }
 
-func getApplication(ctx context.Context, input *struct {
+type controller struct {
+	srv service.Service
+}
+
+func (c controller) getApplication(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{ Body api.Application }, error) {
-	app := srv.GetApplication(input.Id)
+	app := c.srv.GetApplication(input.Id)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
-func listMeasurements(ctx context.Context, input *struct {
+func (c controller) listMeasurements(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{ Body []api.Measurement }, error) {
-	m := srv.ListMeasurements(input.Id)
+	m := c.srv.ListMeasurements(input.Id)
 	return &struct{ Body []api.Measurement }{Body: m}, nil
 }
 
-func listMeasurementValues(ctx context.Context, input *struct {
+func (c controller) listMeasurementValues(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application to get."`
 	Name string `path:"name" doc:"Name of the measurement."`
-	Sort string `query:"sort" enum:"created,value" required:"false" doc:"Sort by." default:"created"`
+	Sort string `query:"sort" enum:"created,data" required:"false" doc:"Sort by." default:"created"`
 	Dir  string `query:"dir" enum:"asc,desc" required:"false" doc:"Sort direction." default:"desc"`
 	Page int    `query:"page" required:"false" doc:"Page number. 1-based, please." minimum:"1" default:"1"`
 	Size int    `query:"size" required:"false" maximum:"50" doc:"Page size." default:"10"`
 }) (*struct{ Body api.MeasurementValues }, error) {
-	mvs := srv.ListMeasurementValues(input.Id,
+	mvs := c.srv.ListMeasurementValues(input.Id,
 		input.Name,
-		srv.NewSort(input.Sort, "created", input.Dir),
-		srv.NewPagination(input.Size, 10, input.Page),
+		c.srv.NewSort(input.Sort, "created", input.Dir),
+		c.srv.NewPagination(input.Size, 10, input.Page),
 	)
 	return &struct{ Body api.MeasurementValues }{Body: mvs}, nil
 }
 
-func addApplication(ctx context.Context, input *struct {
+func (c controller) addApplication(ctx context.Context, input *struct {
 	Body api.Application
 }) (*struct {
 	Body api.Application
 }, error) {
-	app := srv.AddApplication(input.Body)
+	app := c.srv.AddApplication(input.Body)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
-func addMeasurement(ctx context.Context, input *struct {
+func (c controller) addMeasurement(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application for which to add a new measurement."`
 	Body api.Measurement
 }) (*struct{}, error) {
-	srv.InitMeasurement(input.Id, input.Body)
+	c.srv.InitMeasurement(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 
-func getMeasurement(c context.Context, input *struct {
+func (c controller) getMeasurement(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application for which to get the measurement."`
 	Name string `path:"name" doc:"Name of the measurement."`
 }) (*struct {
@@ -97,62 +102,62 @@ func getMeasurement(c context.Context, input *struct {
 	response := struct {
 		Body api.Measurement
 	}{
-		Body: srv.GetMeasurement(input.Id, input.Name),
+		Body: c.srv.GetMeasurement(input.Id, input.Name),
 	}
 	return &response, nil
 }
 
-func updateApplication(c context.Context, input *struct {
+func (c controller) updateApplication(ctx context.Context, input *struct {
 	Id   string          `path:"id" doc:"Id of the application to patch."`
 	Body api.Application `doc:"The application"`
 }) (*struct{ Body api.Application }, error) {
 
-	app := srv.UpdateApplication(input.Body)
+	app := c.srv.UpdateApplication(input.Body)
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
-func listApplications(c context.Context, input *struct{}) (*struct {
+func (c controller) listApplications(ctx context.Context, input *struct{}) (*struct {
 	Body []api.Application
 }, error) {
 	response := struct {
 		Body []api.Application
 	}{
-		Body: srv.ListApplications(),
+		Body: c.srv.ListApplications(),
 	}
 	return &response, nil
 }
 
-func deleteApplication(c context.Context, input *struct {
+func (c controller) deleteApplication(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to delete."`
 }) (*struct{}, error) {
-	srv.DeleteApplication(input.Id)
+	c.srv.DeleteApplication(input.Id)
 	return &struct{}{}, nil
 }
 
-func addConfiguration(c context.Context, input *struct {
+func (c controller) addConfiguration(ctx context.Context, input *struct {
 	Id   string            `path:"id" doc:"Id of the application."`
 	Body api.Configuration `doc:"Configuration data"`
 }) (*struct{}, error) {
 
 	configuration := api.Configuration{}
 	configuration.Data = input.Body.Data
-	srv.AddConfiguration(input.Id, configuration)
+	c.srv.AddConfiguration(input.Id, configuration)
 	return &struct{}{}, nil
 }
 
-func logout(c context.Context, input *struct {
+func (c controller) logout(ctx context.Context, input *struct {
 	Token string `header:"Authorization"`
 }) (*struct{}, error) {
 	ts.remove(getToken(input.Token))
 	return &struct{}{}, nil
 }
 
-func login(c context.Context, input *struct {
+func (c controller) login(ctx context.Context, input *struct {
 	Body api.LoginRequest `doc:"Login credentialsrv."`
 }) (*struct {
 	Body api.LoginResponse `doc:"Bearer token."`
 }, error) {
-	if srv.Login(input.Body.Username, input.Body.Password) {
+	if c.srv.Login(input.Body.Username, input.Body.Password) {
 		r := api.LoginResponse{
 			Token:  uuid.NewString(),
 			Expiry: 3600,

@@ -74,10 +74,19 @@ func (c *c) GetConfiguration(appId string) Configuration {
 	conf := Configuration{}
 	r, err := c.db.Context().Query(
 		`SELECT 
-			data,
-			created
-		FROM Configuration
-		WHERE application_id = ? AND is_latest = true
+			tmp.data,
+			tmp.created
+		FROM (
+			SELECT 
+				data,
+				created 
+			FROM 
+				Configuration
+				WHERE application_id = ?
+				AND is_latest = true
+			ORDER BY created DESC
+			LIMIT 1
+		) tmp
 		`, appId)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("Could not get configuration.")
@@ -105,12 +114,20 @@ func (c *c) ListApplications() []Application {
 	result := make([]Application, 0)
 	rows, err := c.db.Context().Query(
 		`SELECT 
-			a.id, 
-			a.name,
+			id, 
+			name,
 			c.data,
 			c.created
 		FROM Application a
-		LEFT JOIN Configuration c ON c.application_id = a.id AND c.is_latest = true
+		LEFT JOIN (
+			SELECT 
+				data,
+				created,
+				application_id,
+				is_latest,
+				RANK() OVER (PARTITION BY application_id ORDER BY created DESC) latest_by_created
+			FROM Configuration
+		) AS c ON c.application_id = a.id AND c.latest_by_created = 1 AND c.is_latest = 1
 		ORDER BY a.name`)
 
 	if err != nil {
@@ -229,6 +246,8 @@ func (c *c) getApplication(id string, withApiKey bool) (Application, error) {
 		FROM Application a
 		LEFT JOIN Configuration c ON c.application_id = a.id AND c.is_latest = true
 		WHERE a.id = ?
+		ORDER BY c.created DESC
+		LIMIT 1
 		`, withApiKey, id)
 	if err != nil {
 		log.Error().AnErr("error", err).Msg("SQL execution failed.")

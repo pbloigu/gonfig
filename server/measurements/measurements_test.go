@@ -109,14 +109,3 @@ func TestPersistMultiple(t *testing.T) {
 	assert.Equal(t, 2, len(values))
 
 }
-
-// func TestGenerateSomeData(t *testing.T) {
-// 	var val string
-// 	for i := range 20 {
-// 		val = fmt.Sprintf("value_%d", i)
-// 		PeristMeasurement("3db49a19-1f9e-4a63-a374-16567a3e1ce4", Measurement{
-// 			Name:      "test1",
-// 			LastValue: &val,
-// 		})
-// 	}
-// }

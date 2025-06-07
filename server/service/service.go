@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,14 +9,15 @@ import (
 	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/measurements"
+	"github.com/rs/zerolog/log"
 )
 
 // Service interface with all public functions in this file
 type Service interface {
 	NewPagination(size int, defaultSize int, page int) Pargination
 	NewSort(sort string, defaultSort string, dir string) Sort
-	DoHeartbeat(appId string)
-	GetHartbeat(appId string) api.Heartbeat
+	Joined(appId string)
+	Left(appId string)
 	UpdateApplication(application api.Application) api.Application
 	AddApplication(application api.Application) api.Application
 	GetApplication(id string) api.Application
@@ -33,11 +35,11 @@ type Service interface {
 }
 
 type s struct {
-	m measurements.Measurements
-	c configurations.Configurations
+	m          measurements.Measurements
+	c          configurations.Configurations
+	online     map[string]time.Time
+	onlineLock sync.RWMutex
 }
-
-var hb = make(map[string]time.Time)
 
 type Direction string
 
@@ -68,9 +70,25 @@ func New(dbLoc string, measurementDb string) Service {
 	}()
 
 	return &s{
-		m: <-mch,
-		c: <-cch,
+		m:          <-mch,
+		c:          <-cch,
+		online:     make(map[string]time.Time),
+		onlineLock: sync.RWMutex{},
 	}
+}
+
+func (s *s) Joined(appId string) {
+	s.onlineLock.Lock()
+	defer s.onlineLock.Unlock()
+	s.online[appId] = time.Now()
+	log.Info().Any("application", appId).Msg("Application joined.")
+}
+
+func (s *s) Left(appId string) {
+	s.onlineLock.Lock()
+	defer s.onlineLock.Unlock()
+	delete(s.online, appId)
+	log.Info().Any("application", appId).Msg("Application went away.")
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
@@ -110,16 +128,6 @@ func (s *s) NewSort(sort string, defaultSort string, dir string) Sort {
 				return DESC
 			}
 		}(),
-	}
-}
-
-func (s *s) DoHeartbeat(appId string) {
-	hb[appId] = time.Now()
-}
-
-func (s *s) GetHartbeat(appId string) api.Heartbeat {
-	return api.Heartbeat{
-		Time: hb[appId],
 	}
 }
 
@@ -163,6 +171,7 @@ func (s *s) GetApplication(id string) api.Application {
 			Data: a.Configuration.Data,
 			Date: a.Configuration.CreatedAt,
 		},
+		IsOnline: s.isOnline(a.Id),
 	}
 }
 
@@ -176,6 +185,7 @@ func (s *s) ListApplications() []api.Application {
 				Data: a.Configuration.Data,
 				Date: a.Configuration.CreatedAt,
 			},
+			IsOnline: s.isOnline(a.Id),
 		})
 	}
 	return result
@@ -276,4 +286,11 @@ func (s *s) IsAllowed(appId string, apiKey string) bool {
 
 func (s *s) Login(login string, password string) bool {
 	return s.c.Login(login, password)
+}
+
+func (s *s) isOnline(appId string) bool {
+	s.onlineLock.RLock()
+	defer s.onlineLock.RUnlock()
+	_, ok := s.online[appId]
+	return ok
 }

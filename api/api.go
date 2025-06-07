@@ -2,14 +2,6 @@ package api
 
 import "time"
 
-type CC struct {
-	Id string `json:"id" nullable:"false" required:"true"`
-}
-
-type Heartbeat struct {
-	Time time.Time `json:"time"`
-}
-
 type Configuration struct {
 	Data string    `json:"data"`
 	Date time.Time `json:"time" readOnly:"true" required:"false"`
@@ -42,6 +34,7 @@ type Application struct {
 	Ip            string        `json:"ip" readOnly:"true" required:"false"`
 	Configuration Configuration `json:"configuration" required:"false"`
 	Measurements  []string      `json:"measurements" required:"false" readonly:"true"`
+	IsOnline      bool          `json:"isOnline" required:"false" readonly:"true"`
 }
 
 type LoginRequest struct {

@@ -1,11 +1,13 @@
 package frontend
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
@@ -20,10 +22,36 @@ type Config struct {
 	Addr string
 }
 
-var srv service.Service
+type Frontend interface {
+	Start()
+	Stop(time.Duration)
+}
 
-func Start(c Config, s service.Service) {
-	srv = s
+type frontend struct {
+	config Config
+	http   *http.Server
+	c      controller
+}
+
+func New(c Config, service service.Service) Frontend {
+	return &frontend{
+		config: c,
+		c: controller{
+			srv: service,
+		},
+	}
+}
+
+func (f *frontend) Stop(timeout time.Duration) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	if err := f.http.Shutdown(ctx); err != nil {
+		log.Fatal().AnErr("error", err).Msg("Server forced to shutdown.")
+	}
+	log.Info().Msg("Frontend REST services shut down.")
+}
+
+func (f *frontend) Start() {
 	router := gin.Default()
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 	hc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
@@ -50,22 +78,30 @@ func Start(c Config, s service.Service) {
 
 	humaWrapper.UseMiddleware(getApiTokenAuthMiddleware(humaWrapper))
 
-	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}", "getApplication"), getApplication)
-	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements/{name}", "listMeasurementValues"), listMeasurementValues)
-	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurement/{name}", "getMeasurement"), getMeasurement)
-	huma.Register(humaWrapper, def(http.MethodPost, "/application", "addApplication"), addApplication)
-	huma.Register(humaWrapper, def(http.MethodPatch, "/application/{id}", "updateApplication"), updateApplication)
-	huma.Register(humaWrapper, def(http.MethodGet, "/applications", "listApplications"), listApplications)
-	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements", "listMeasurements"), listMeasurements)
-	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/measurement", "addMeasurement"), addMeasurement)
-	huma.Register(humaWrapper, def(http.MethodDelete, "/application/{id}", "deleteApplication"), deleteApplication)
-	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/configuration", "addConfiguration"), addConfiguration)
-	huma.Register(humaWrapper, def(http.MethodPost, "/login", "login"), login)
-	huma.Register(humaWrapper, def(http.MethodGet, "/logout", "logout"), logout)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}", "getApplication"), f.c.getApplication)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements/{name}", "listMeasurementValues"), f.c.listMeasurementValues)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurement/{name}", "getMeasurement"), f.c.getMeasurement)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application", "addApplication"), f.c.addApplication)
+	huma.Register(humaWrapper, def(http.MethodPatch, "/application/{id}", "updateApplication"), f.c.updateApplication)
+	huma.Register(humaWrapper, def(http.MethodGet, "/applications", "listApplications"), f.c.listApplications)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/measurements", "listMeasurements"), f.c.listMeasurements)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/measurement", "addMeasurement"), f.c.addMeasurement)
+	huma.Register(humaWrapper, def(http.MethodDelete, "/application/{id}", "deleteApplication"), f.c.deleteApplication)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/configuration", "addConfiguration"), f.c.addConfiguration)
+	huma.Register(humaWrapper, def(http.MethodPost, "/login", "login"), f.c.login)
+	huma.Register(humaWrapper, def(http.MethodGet, "/logout", "logout"), f.c.logout)
 
-	go router.Run(fmt.Sprintf("%s:%d", c.Addr, c.Port))
-	log.Info().Any("port", c.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started frontend.")
-
+	srv := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", f.config.Addr, f.config.Port),
+		Handler: router,
+	}
+	f.http = srv
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().AnErr("error", err).Msg("Failed to start frontend")
+		}
+	}()
+	log.Info().Any("port", f.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started frontend.")
 }
 
 func isStatic(path string) bool {

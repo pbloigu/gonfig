@@ -52,7 +52,7 @@
 				measurementValues = val;
 				helper.total = val.total;
 				helper.start = (val.page - 1) * val.pageSize + 1;
-				helper.end = val.page * val.pageSize;
+				helper.end = helper.start + Math.min(val.values.length, val.pageSize) - 1;
 			});
 			action = 'SHOW_VALUES';
 		}
@@ -66,7 +66,9 @@
 		}
 	};
 
-	const next = async () => {};
+	const next = async () => {
+		page++;
+	};
 
 	async function getMeasurements() {
 		measurementNames = [] as MeasurementName[];
@@ -141,7 +143,7 @@
 				</Pagination>
 			</div>
 		</div>
-		<Table divClass="table-wrp block max-h-96 overflow-y-auto overscroll-contain" class="w-full">
+		<Table divClass="table-wrp block max-h-70 overflow-y-auto overscroll-contain" class="w-full">
 			<TableHead class="sticky top-0 border-b bg-white">
 				<TableHeadCell>Recored</TableHeadCell>
 				<TableHeadCell>Value</TableHeadCell>
@@ -149,7 +151,7 @@
 			<TableBody class="h-96 overflow-y-auto">
 				{#if measurementValues != undefined}
 					{#each measurementValues.values as v}
-						<TableBodyRow>
+						<TableBodyRow style="height:1em">
 							<TableBodyCell>{v.time}</TableBodyCell>
 							<TableBodyCell>{v.data}</TableBodyCell>
 						</TableBodyRow>

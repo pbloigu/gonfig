@@ -39,6 +39,7 @@ export type Application = {
     readonly hostname?: (string) & readonlyP;
     readonly id?: (string) & readonlyP;
     readonly ip?: (string) & readonlyP;
+    isOnline?: boolean;
     measurements?: string[];
     name: string;
 };

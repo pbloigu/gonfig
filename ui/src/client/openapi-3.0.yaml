@@ -23,6 +23,8 @@ components:
         ip:
           readOnly: true
           type: string
+        isOnline:
+          type: boolean
         measurements:
           items:
             type: string
@@ -465,7 +467,7 @@ paths:
             description: Sort by.
             enum:
               - created
-              - value
+              - data
             type: string
         - description: Sort direction.
           explode: false
@@ -495,10 +497,8 @@ paths:
           schema:
             default: 10
             description: Page size.
-            enum:
-              - 10
-              - 20
             format: int64
+            maximum: 50
             type: integer
       responses:
         "200":
@@ -544,7 +544,7 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-              description: Login credentials.
+              description: Login credentialsrv.
         required: true
       responses:
         "200":

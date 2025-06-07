@@ -92,7 +92,7 @@ export const ListMeasurementValues = async function name(name: string, appId: st
             dir: "desc",
             page: page,
             size:10,
-            sort:"created"
+            sort:"data"
         }, {})
         .catch((error: AxiosError) => errorHandler(error))
     return Promise.resolve(response.data)

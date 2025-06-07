@@ -12,7 +12,10 @@
 		NavUl,
 		Button,
 
-		NavLi
+		NavLi,
+
+		Badge
+
 
 	} from 'flowbite-svelte';
 
@@ -55,6 +58,7 @@
 </Navbar>
 <Table id="hello">
 	<TableHead>
+		<TableHeadCell>Status</TableHeadCell>
 		<TableHeadCell>Id</TableHeadCell>
 		<TableHeadCell>Name</TableHeadCell>
 		<TableHeadCell>Measurements</TableHeadCell>
@@ -64,6 +68,13 @@
 	<TableBody>
 		{#each tableItems as ti}
 			<TableBodyRow>
+				<TableBodyCell>
+					{#if ti.isOnline}
+						<Badge color="green">ONLINE</Badge>
+					{:else}
+						<Badge color="red">OFFLINE</Badge>
+					{/if}
+				</TableBodyCell>
 				<TableBodyCell>{ti.id}</TableBodyCell>
 				<TableBodyCell>{ti.name}</TableBodyCell>
 				<TableBodyCell><ViewMeasurements app={ti}></ViewMeasurements></TableBodyCell>

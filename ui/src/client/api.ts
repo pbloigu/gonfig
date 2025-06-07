@@ -81,10 +81,10 @@ export default class {
     private listMeasurementValues(params: {
         'id': string,
         'name': string,
-        'sort': "created" | "value",
+        'sort': "created" | "data",
         'dir': "asc" | "desc",
         'page': number,
-        'size': 10 | 20
+        'size': number
     }, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<MeasurementValues>>(
             "/application/{id}/measurements/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])),

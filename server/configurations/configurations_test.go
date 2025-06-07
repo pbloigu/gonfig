@@ -14,7 +14,7 @@ import (
 // }
 
 func TestPersistApplication(t *testing.T) {
-	repo := New(t.TempDir() + "/tmp.sqlite")
+	repo := New(t.TempDir() + "/test.sqlite")
 	a := repo.PersistApplication(Application{
 		Id:     "appid",
 		ApiKey: "apikey",

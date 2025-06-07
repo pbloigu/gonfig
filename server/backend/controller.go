@@ -8,9 +8,14 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-http-utils/headers"
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/service"
 )
 
-func getConfiguration(c context.Context, input *struct {
+type controller struct {
+	srv service.Service
+}
+
+func (c controller) getConfiguration(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application for which to get the configuration."`
 }) (*struct {
 	Body api.Configuration
@@ -18,12 +23,12 @@ func getConfiguration(c context.Context, input *struct {
 	response := struct {
 		Body api.Configuration
 	}{
-		Body: srv.GetConfiguration(input.Id),
+		Body: c.srv.GetConfiguration(input.Id),
 	}
 	return &response, nil
 }
 
-func getMeasurement(c context.Context, input *struct {
+func (c controller) getMeasurement(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application for which to get the measurement."`
 	Name string `path:"name" doc:"Name of the measurement."`
 }) (*struct {
@@ -32,51 +37,34 @@ func getMeasurement(c context.Context, input *struct {
 	response := struct {
 		Body api.Measurement
 	}{
-		Body: srv.GetMeasurement(input.Id, input.Name),
+		Body: c.srv.GetMeasurement(input.Id, input.Name),
 	}
 	return &response, nil
 }
 
-func doHeartbeat(c context.Context, input *struct {
-	Id string `path:"id" doc:"Id of the application for which to update heartbeat."`
-}) (*struct{}, error) {
-	srv.DoHeartbeat(input.Id)
-	return &struct{}{}, nil
-}
-
-func getHeartbeat(c context.Context, input *struct {
-	Id string `path:"id" doc:"Id of the application for which to update heartbeat."`
-}) (*struct {
-	Body api.Heartbeat
-}, error) {
-	return &struct{ Body api.Heartbeat }{
-		Body: srv.GetHartbeat(input.Id),
-	}, nil
-}
-
-func addMeasurement(c context.Context, input *struct {
+func (c controller) addMeasurement(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application for which to add measurement."`
 	Name string `path:"name" doc:"The name of the measurement."`
 	Body api.Measurement
 }) (*struct{}, error) {
-	srv.AddMeasurement(input.Id, input.Body)
+	c.srv.AddMeasurement(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 
-func isAllowed(authHeader string, appId string) bool {
+func (c controller) isAllowed(authHeader string, appId string) bool {
 	if authHeader != "" && appId != "" {
 		for i, p := range strings.Split(authHeader, " ") {
 			if i == 1 {
-				return srv.IsAllowed(appId, strings.TrimSpace(p))
+				return c.srv.IsAllowed(appId, strings.TrimSpace(p))
 			}
 		}
 	}
 	return false
 }
 
-func getApiTokenAuthMiddleware(api huma.API) func(ctx huma.Context, next func(huma.Context)) {
+func (c controller) getApiTokenAuthMiddleware(api huma.API) func(ctx huma.Context, next func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
-		if !isAllowed(ctx.Header(headers.Authorization), ctx.Param("id")) {
+		if !c.isAllowed(ctx.Header(headers.Authorization), ctx.Param("id")) {
 			huma.WriteErr(api, ctx, http.StatusUnauthorized, "Unauthorized")
 			return
 		} else {
