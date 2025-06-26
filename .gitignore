@@ -1,0 +1,4 @@
+database.sqlite
+server/.env
+server/gonfig_arm64
+server/measurements/.env.test
