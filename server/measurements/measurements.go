@@ -52,7 +52,7 @@ func getMeasurement(dba database.Context, applicationId string, measurementName 
 	if !r.Next() {
 		err = fmt.Errorf("no measurement found with the name %s for application %s", measurementName, applicationId)
 		log.Error().AnErr("error", err).Msg("No measurement found.")
-		return Measurement{}, err
+		return Measurement{}, nil
 	}
 	var id int
 	if err = r.Scan(&id); err != nil {

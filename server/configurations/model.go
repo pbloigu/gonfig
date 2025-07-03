@@ -15,3 +15,26 @@ type Configuration struct {
 	CreatedAt time.Time
 	Data      string
 }
+
+type CronTrigger struct {
+	Id             int
+	Name           string
+	CronExpression string
+	Actions        []Action
+}
+
+type MeasurementTrigger struct {
+	Id              int
+	MeasurementName string
+	Actions         []Action
+}
+
+type StatusChangeTrigger struct {
+	Id      int
+	Actions []Action
+}
+
+type Action struct {
+	Name   string
+	Script string
+}

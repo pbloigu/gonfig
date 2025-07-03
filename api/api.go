@@ -33,8 +33,8 @@ type Application struct {
 	Hostname      string        `json:"hostname" readOnly:"true" required:"false"`
 	Ip            string        `json:"ip" readOnly:"true" required:"false"`
 	Configuration Configuration `json:"configuration" required:"false"`
-	Measurements  []string      `json:"measurements" required:"false" readonly:"true"`
-	IsOnline      bool          `json:"isOnline" required:"false" readonly:"true"`
+	Measurements  []string      `json:"measurements" required:"false" readOnly:"true"`
+	IsOnline      bool          `json:"isOnline" required:"false" readOnly:"true"`
 }
 
 type LoginRequest struct {
@@ -45,4 +45,24 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token  string `json:"token" required:"true"`
 	Expiry int    `json:"expiry" doc:"Token exipry in seconds."`
+}
+
+type CronTrigger struct {
+	Name           string   `json:"name" required:"true" readOnly:"false"`
+	CronExpression string   `json:"cronExpression" required:"true" readOnly:"false"`
+	Actions        []Action `json:"actions" required:"false" readOnly:"false"`
+}
+
+type MeasurementTrigger struct {
+	MeasurementName string   `json:"measurementName" required:"true" readOnly:"false"`
+	Actions         []Action `json:"actions" required:"false" readOnly:"false"`
+}
+
+type StatusChangeTrigger struct {
+	Actions []Action `json:"actions" required:"false" readOnly:"false"`
+}
+
+type Action struct {
+	Name   string `json:"name" required:"true" readOnly:"false"`
+	Script string `json:"script" required:"true" readOnly:"false"`
 }

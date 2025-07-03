@@ -2,7 +2,7 @@
 /* eslint-disable */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
-import type { Application, Configuration, Measurement, MeasurementValues, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
+import type { Application, Configuration, Measurement, MeasurementValues, StatusChangeTrigger, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
 
 export * from "./definitions";
 
@@ -98,6 +98,38 @@ export default class {
         );
     }
 
+    private getStatusChangeTrigger(params: {
+        'id': string
+    }, options?: AxiosRequestConfig) {
+        return this.axios.get<WithoutWriteonly<StatusChangeTrigger>>(
+            "/application/{id}/trigger/status".replace(/{id}/, String(params["id"])), options
+        );
+    }
+
+    private addStatusChangeTrigger(params: {
+        'id': string
+    }, data: WithoutReadonly<StatusChangeTrigger>, options?: AxiosRequestConfig) {
+        return this.axios.post<WithoutWriteonly<StatusChangeTrigger>>(
+            "/application/{id}/trigger/status".replace(/{id}/, String(params["id"])), data, options
+        );
+    }
+
+    private updateStatusChangeTrigger(params: {
+        'id': string
+    }, data: WithoutReadonly<StatusChangeTrigger>, options?: AxiosRequestConfig) {
+        return this.axios.put<WithoutWriteonly<StatusChangeTrigger>>(
+            "/application/{id}/trigger/status".replace(/{id}/, String(params["id"])), data, options
+        );
+    }
+
+    private deleteStatusChangeTrigger(params: {
+        'id': string
+    }, options?: AxiosRequestConfig) {
+        return this.axios.delete(
+            "/application/{id}/trigger/status".replace(/{id}/, String(params["id"])), options
+        );
+    }
+
     private listApplications(params: Record<string, never>, options?: AxiosRequestConfig) {
         return this.axios.get<WithoutWriteonly<Application>[]>(
             "/applications", options
@@ -136,6 +168,10 @@ export default class {
             getMeasurement: this.getMeasurement.bind(this),
             listMeasurements: this.listMeasurements.bind(this),
             listMeasurementValues: this.listMeasurementValues.bind(this),
+            getStatusChangeTrigger: this.getStatusChangeTrigger.bind(this),
+            addStatusChangeTrigger: this.addStatusChangeTrigger.bind(this),
+            updateStatusChangeTrigger: this.updateStatusChangeTrigger.bind(this),
+            deleteStatusChangeTrigger: this.deleteStatusChangeTrigger.bind(this),
             listApplications: this.listApplications.bind(this),
             login: this.login.bind(this),
             logout: this.logout.bind(this)

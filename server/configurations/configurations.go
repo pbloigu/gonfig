@@ -2,13 +2,21 @@ package configurations
 
 import (
 	_ "embed"
+	"fmt"
+	"sync"
 
 	"github.com/pbloigu/gonfig/server/database"
 	"github.com/rs/zerolog/log"
 	_ "modernc.org/sqlite"
 )
 
+type Cached interface {
+	GetStatusChangeActions(appId string) []Action
+	ListApplicationIds() []string
+}
+
 type Configurations interface {
+	AsCached() Cached
 	DeleteApplication(id string)
 	GetApplication(id string) Application
 	GetConfiguration(appId string) Configuration
@@ -18,20 +26,98 @@ type Configurations interface {
 	PersistApplication(a Application) Application
 	PersistConfiguration(applicationId string, c Configuration)
 	UpdateApplication(a Application)
+	ListMeasurementTriggers(appId string) []MeasurementTrigger
+	PersitMeasurementTrigger(appId string, mt MeasurementTrigger)
+	PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) StatusChangeTrigger
+	UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger)
+	GetStatusChangeTrigger(appId string) StatusChangeTrigger
+	DeleteStatusChangeTrigger(appId string)
 }
 
 type c struct {
-	db database.Database
-}
-
-func New(dbLoc string) Configurations {
-	return &c{
-		db: startDatabase(dbLoc),
-	}
+	db                 database.Database
+	statusActions      actionCache
+	cronActions        actionCache
+	measurementActions actionCache
+	apps               appCache
 }
 
 //go:embed schema.sql
 var ddl string
+
+func New(dbLoc string) Configurations {
+	c := &c{
+		db: startDatabase(dbLoc),
+		statusActions: actionCache{
+			c: make(map[string][]Action),
+			m: &sync.RWMutex{},
+		},
+		cronActions: actionCache{
+			c: make(map[string][]Action),
+			m: &sync.RWMutex{},
+		},
+		measurementActions: actionCache{
+			c: make(map[string][]Action),
+			m: &sync.RWMutex{},
+		},
+		apps: appCache{
+			c: map[string]bool{},
+			m: &sync.RWMutex{},
+		},
+	}
+	c.populateTriggerCaches()
+
+	return c
+}
+
+func (c *c) AsCached() Cached {
+	return c
+}
+
+func (c *c) populateTriggerCaches() {
+	appIds := make([]string, 0)
+	r, err := c.db.Context().Query(`
+		SELECT id
+		FROM Application
+	`)
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Unable to list application.")
+		return
+	}
+	r.Close()
+	for r.Next() {
+		var appId string
+		err = r.Scan(&appId)
+		if err != nil {
+			log.Panic().AnErr("error", err).Msg("Unable to select application id.")
+			return
+		}
+		appIds = append(appIds, appId)
+		c.apps.put(appId, true)
+	}
+
+	waiter := make(chan bool, 3)
+	go func() {
+		for _, appId := range appIds {
+			tr := c.GetStatusChangeTrigger(appId)
+			c.statusActions.put(appId, tr.Actions)
+		}
+		waiter <- true
+	}()
+
+	go func() {
+		for _, appId := range appIds {
+			mts := c.ListMeasurementTriggers(appId)
+			for _, mt := range mts {
+				c.measurementActions.put(fmt.Sprintf("%s:%s", appId, mt.MeasurementName), mt.Actions)
+			}
+		}
+		waiter <- true
+	}()
+
+	<-waiter
+	<-waiter
+}
 
 func startDatabase(dbLoc string) database.Database {
 	return database.New(connString(dbLoc), ddl, "sqlite")
@@ -39,6 +125,292 @@ func startDatabase(dbLoc string) database.Database {
 
 func connString(dbLoc string) string {
 	return "file:///" + dbLoc + "?_pragma=foreign_keys(1)"
+}
+
+func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) {
+	acts := make([]Action, 0)
+	var column string
+	var id int
+	switch t := anyTrigger.(type) {
+	case MeasurementTrigger:
+		{
+			column = "measurement_trigger_id"
+			id = t.Id
+		}
+	case CronTrigger:
+		{
+			column = "cron_trigger_id"
+			id = t.Id
+		}
+	case StatusChangeTrigger:
+		{
+			column = "status_change_trigger_id"
+			id = t.Id
+		}
+	default:
+		{
+			err := fmt.Errorf("Unable to handle action of type %s", t)
+			log.Error().AnErr("error", err).Msg("Could not list actions.")
+			return nil, err
+		}
+	}
+
+	r, err := dba.Query(fmt.Sprintf(`
+		SELECT
+			name,
+			script
+		FROM Action
+		WHERE %s = ?
+		ORDER BY name ASC
+	`, column), id)
+
+	if err != nil {
+		log.Error().AnErr("error", err).Msg("Could not list actions.")
+		return nil, err
+	}
+	defer r.Close()
+	for r.Next() {
+		a := Action{}
+		err = r.Scan(&a.Name, &a.Script)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not list actions.")
+			return nil, err
+		}
+		acts = append(acts, a)
+	}
+	return acts, nil
+}
+
+func (c *c) ListApplicationIds() []string {
+	return c.apps.values()
+}
+
+func (c *c) UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		_, err := dba.Exec(`
+			DELETE FROM Action
+			WHERE
+				status_change_trigger_id = (
+					SELECT id FROM
+					StatusTrigger
+					WHERE application_id = ?
+				)`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not delete old actions.")
+			return nil, err
+		}
+
+		var sId int
+
+		r, err := dba.Query(`
+			SELECT id
+			FROM StatusTrigger
+			WHERE application_id = ?
+		`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not fetch trigger id.")
+		}
+		defer r.Close()
+		if r.Next() {
+			err = r.Scan(&sId)
+			if err != nil {
+				log.Error().AnErr("error", err).Msg("Could not fetch trigger id.")
+			}
+		}
+
+		for _, a := range t.Actions {
+			_, err := dba.Exec(`
+				INSERT INTO Action (name, script, status_change_trigger_id)
+				VALUES (?, ?, ?)	
+			`, a.Name, a.Script, sId)
+			if err != nil {
+				log.Error().AnErr("error", err).Msg("Could not insert action.")
+				return nil, err
+			}
+		}
+
+		c.statusActions.put(appId, t.Actions)
+
+		return nil, nil
+	})
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not list update trigger..")
+	}
+}
+
+func (c *c) GetStatusChangeActions(appId string) []Action {
+	return c.statusActions.get(appId)
+}
+
+func (c *c) GetStatusChangeTrigger(appId string) StatusChangeTrigger {
+	tr, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		tr := StatusChangeTrigger{}
+		r, err := dba.Query(`
+			SELECT
+				id
+			FROM StatusTrigger
+			WHERE application_id = ?`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not list triggers.")
+			return nil, err
+		}
+		defer r.Close()
+		if r.Next() {
+			err = r.Scan(&tr.Id)
+			if err != nil {
+				log.Panic().AnErr("error", err).Msg("Database operation failed.")
+			}
+			a, err := c.listActions(dba, tr)
+			if err != nil {
+				return nil, err
+			}
+			tr.Actions = a
+		}
+
+		return tr, nil
+	})
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not list measurement triggers.")
+	}
+
+	return tr.(StatusChangeTrigger)
+}
+
+func (c *c) ListMeasurementTriggers(appId string) []MeasurementTrigger {
+	ms, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		ms := make([]MeasurementTrigger, 0)
+		r, err := dba.Query(`
+			SELECT
+				id,
+				measurement_name
+			FROM MeasurementTrigger
+			WHERE application_id = ?
+			`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not list triggers.")
+			return nil, err
+		}
+		defer r.Close()
+		for r.Next() {
+			m := MeasurementTrigger{}
+			err = r.Scan(&m.Id, &m.MeasurementName)
+			if err != nil {
+				log.Panic().AnErr("error", err).Msg("Database operation failed.")
+			}
+			a, err := c.listActions(dba, m)
+			if err != nil {
+				return nil, err
+			}
+			m.Actions = a
+			ms = append(ms, m)
+		}
+
+		return ms, nil
+	})
+
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not list measurement triggers.")
+	}
+
+	return ms.([]MeasurementTrigger)
+}
+
+func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) StatusChangeTrigger {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		_, err := dba.Exec(`
+			INSERT INTO StatusTrigger (application_id)
+			VALUES (?)
+		`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not insert status change trigger.")
+			return nil, err
+		}
+
+		r, err := dba.Query(`
+			SELECT id
+			FROM StatusTrigger
+			WHERE application_id = ?
+		`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Status change trigger was not inserted.")
+			return nil, err
+		}
+		defer r.Close()
+		if !r.Next() {
+			log.Error().AnErr("error", err).Msg("Status change trigger was not inserted.")
+			return nil, err
+		}
+		var stId int
+		if err = r.Scan(&stId); err != nil {
+			log.Error().AnErr("error", err).Msg("Status change trigger was not inserted.")
+			return nil, err
+		}
+
+		for _, a := range st.Actions {
+			_, err := dba.Exec(`
+				INSERT INTO Action (name, script, status_change_trigger_id)
+				VALUES (?, ?, ?)
+			`, a.Name, a.Script, stId)
+			if err != nil {
+				log.Error().AnErr("error", err).Msg("Could not insert action.")
+				return nil, err
+			}
+		}
+		c.statusActions.put(appId, st.Actions)
+		return nil, nil
+	})
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not persist status change trigger.")
+	}
+
+	return c.GetStatusChangeTrigger(appId)
+}
+
+func (c *c) PersitMeasurementTrigger(appId string, mt MeasurementTrigger) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		_, err := dba.Exec(`
+			INSERT INTO MeasurementTrigger (application_id, measurement_name)
+			VALUES (?, ?)
+		`, appId, mt.MeasurementName)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not insert measurement trigger.")
+			return nil, err
+		}
+		r, err := dba.Query(`
+			SELECT id
+			FROM MeasurementTrigger
+			WHERE application_id = ?
+			AND measurement_name = ?
+		`, appId, mt.MeasurementName)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			return nil, err
+		}
+		defer r.Close()
+		if !r.Next() {
+			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			return nil, err
+		}
+		var mtId int
+		if err = r.Scan(&mtId); err != nil {
+			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			return nil, err
+		}
+		for _, a := range mt.Actions {
+			_, err := dba.Exec(`
+				INSERT INTO Action (name, script, measurement_trigger_id)
+				VALUES (?, ?, ?)
+			`, a.Name, a.Script, mtId)
+			if err != nil {
+				log.Error().AnErr("error", err).Msg("Could not insert action.")
+				return nil, err
+			}
+		}
+		return nil, nil
+	})
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not persist measurement trigger.")
+	}
 }
 
 // Public functions in alphabetical order
@@ -55,6 +427,7 @@ func (c *c) DeleteApplication(id string) {
 			log.Error().AnErr("error", err).Msg("Could not delete application.")
 			return nil, err
 		}
+		c.apps.remove(id)
 		return nil, nil
 	})
 	if err != nil {
@@ -169,11 +542,12 @@ func (c *c) PersistApplication(a Application) Application {
 			return nil, err
 		} else {
 			err = persistConfiguration(dba, a.Id, a.Configuration)
-			log.Error().AnErr("error", err).Msg("Could not persist configuration.")
 			if err != nil {
+				log.Error().AnErr("error", err).Msg("Could not persist configuration.")
 				return nil, err
 			}
 		}
+		c.apps.put(a.Id, true)
 		return nil, nil
 	})
 	if err != nil {
@@ -287,4 +661,33 @@ func persistConfiguration(dba database.Context, applicationId string, c Configur
 		return err
 	}
 	return nil
+}
+
+func (c *c) DeleteStatusChangeTrigger(appId string) {
+	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
+		_, err := dba.Exec(`
+			DELETE FROM Action
+			WHERE status_change_trigger_id = (
+				SELECT id
+				FROM StatusTrigger
+				WHERE application_id = ?
+			)
+		`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Deleting actions failed.")
+			return nil, err
+		}
+		_, err = dba.Exec(`
+			DELETE FROM StatusTrigger
+			WHERE application_id = ?
+		`, appId)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Deleting status change trigger failed.")
+			return nil, err
+		}
+		return nil, nil
+	})
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Status change trigger deletion failed.")
+	}
 }

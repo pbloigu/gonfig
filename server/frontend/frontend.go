@@ -90,6 +90,10 @@ func (f *frontend) Start() {
 	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/configuration", "addConfiguration"), f.c.addConfiguration)
 	huma.Register(humaWrapper, def(http.MethodPost, "/login", "login"), f.c.login)
 	huma.Register(humaWrapper, def(http.MethodGet, "/logout", "logout"), f.c.logout)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/trigger/status", "getStatusChangeTrigger"), f.c.getStatusChangeTrigger)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/trigger/status", "addStatusChangeTrigger"), f.c.addStatusChangeTrigger)
+	huma.Register(humaWrapper, def(http.MethodPut, "/application/{id}/trigger/status", "updateStatusChangeTrigger"), f.c.updateStatusChangeTrigger)
+	huma.Register(humaWrapper, def(http.MethodDelete, "/application/{id}/trigger/status", "deleteStatusChangeTrigger"), f.c.deleteStatusChangeTrigger)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", f.config.Addr, f.config.Port),

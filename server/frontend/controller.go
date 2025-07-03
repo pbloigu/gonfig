@@ -46,10 +46,50 @@ type controller struct {
 	srv service.Service
 }
 
+func (c controller) getStatusChangeTrigger(ctx context.Context, input *struct {
+	Id string `path:"id" doc:"Id of the application to get."`
+}) (*struct{ Body api.StatusChangeTrigger }, error) {
+	trigger := c.srv.GetStatusChangeTrigger(input.Id)
+
+	if trigger == nil {
+		return nil, huma.Error404NotFound("No such trigger.")
+	} else {
+		response := &struct{ Body api.StatusChangeTrigger }{Body: *trigger}
+		return response, nil
+	}
+
+}
+
+func (c controller) addStatusChangeTrigger(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application to get."`
+	Body api.StatusChangeTrigger
+}) (*struct{ Body api.StatusChangeTrigger }, error) {
+	trigger := c.srv.AddStatusChangeTrigger(input.Id, input.Body)
+	return &struct{ Body api.StatusChangeTrigger }{Body: trigger}, nil
+}
+
+func (c controller) deleteStatusChangeTrigger(ctx context.Context, input *struct {
+	Id string `path:"id" doc:"Id of the application to get."`
+}) (*struct{}, error) {
+	c.srv.DeleteStatusChangeTrigger(input.Id)
+	return &struct{}{}, nil
+}
+
+func (c controller) updateStatusChangeTrigger(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application to get."`
+	Body api.StatusChangeTrigger
+}) (*struct{ Body api.StatusChangeTrigger }, error) {
+	trigger := c.srv.UpdateStatusChangeTrigger(input.Id, input.Body)
+	return &struct{ Body api.StatusChangeTrigger }{Body: trigger}, nil
+}
+
 func (c controller) getApplication(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{ Body api.Application }, error) {
 	app := c.srv.GetApplication(input.Id)
+	if app.Id == "" {
+		return nil, huma.Error404NotFound("No such application.")
+	}
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
@@ -99,10 +139,15 @@ func (c controller) getMeasurement(ctx context.Context, input *struct {
 }) (*struct {
 	Body api.Measurement
 }, error) {
+	m := c.srv.GetMeasurement(input.Id, input.Name)
+
 	response := struct {
 		Body api.Measurement
 	}{
-		Body: c.srv.GetMeasurement(input.Id, input.Name),
+		Body: m,
+	}
+	if m.Name == "" {
+		return &response, huma.Error404NotFound("No such measurement.")
 	}
 	return &response, nil
 }
@@ -153,7 +198,7 @@ func (c controller) logout(ctx context.Context, input *struct {
 }
 
 func (c controller) login(ctx context.Context, input *struct {
-	Body api.LoginRequest `doc:"Login credentialsrv."`
+	Body api.LoginRequest `doc:"Login credentials"`
 }) (*struct {
 	Body api.LoginResponse `doc:"Bearer token."`
 }, error) {
@@ -169,7 +214,7 @@ func (c controller) login(ctx context.Context, input *struct {
 			Body: r,
 		}, nil
 	} else {
-		return nil, nil
+		return nil, huma.Error401Unauthorized("You shall not pass.")
 	}
 }
 

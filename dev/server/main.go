@@ -54,6 +54,7 @@ func main() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
 	s.Stop(time.Second * 5)
+	os.Remove(os.TempDir() + "/tmp.sqlite")
 }
 
 func loadConfig(dbLoc string) {

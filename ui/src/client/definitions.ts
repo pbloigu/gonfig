@@ -32,6 +32,10 @@ export type WithoutWriteonly<T> = T extends any ?
         ? WithoutWriteonly<Pick<T, PropsWithoutWriteonly<T>>[key]>
         : never
     } : never;
+export type Action = {
+    name: string;
+    script: string;
+};
 export type Application = {
     readonly $schema?: (string) & readonlyP;
     readonly apiKey?: (string) & readonlyP;
@@ -39,8 +43,8 @@ export type Application = {
     readonly hostname?: (string) & readonlyP;
     readonly id?: (string) & readonlyP;
     readonly ip?: (string) & readonlyP;
-    isOnline?: boolean;
-    measurements?: string[];
+    readonly isOnline?: (boolean) & readonlyP;
+    readonly measurements?: (string[]) & readonlyP;
     name: string;
 };
 export type Configuration = {
@@ -89,4 +93,8 @@ export type MeasurementValues = {
     pageSize: number;
     total: number;
     values: MeasurementValue[];
+};
+export type StatusChangeTrigger = {
+    readonly $schema?: (string) & readonlyP;
+    actions?: Action[];
 };

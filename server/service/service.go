@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/icza/gox/gox"
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/measurements"
 	"github.com/rs/zerolog/log"
@@ -32,11 +33,16 @@ type Service interface {
 	ListMeasurements(appId string) []api.Measurement
 	IsAllowed(appId string, apiKey string) bool
 	Login(login string, password string) bool
+	AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
+	DeleteStatusChangeTrigger(appId string)
+	UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
+	GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger
 }
 
 type s struct {
 	m          measurements.Measurements
 	c          configurations.Configurations
+	a          automation.Service
 	online     map[string]time.Time
 	onlineLock sync.RWMutex
 }
@@ -69,12 +75,14 @@ func New(dbLoc string, measurementDb string) Service {
 		cch <- configurations.New(dbLoc)
 	}()
 
-	return &s{
+	s := &s{
 		m:          <-mch,
 		c:          <-cch,
 		online:     make(map[string]time.Time),
 		onlineLock: sync.RWMutex{},
 	}
+	s.a = automation.New(s.c.AsCached(), s.m)
+	return s
 }
 
 func (s *s) Joined(appId string) {
@@ -82,6 +90,7 @@ func (s *s) Joined(appId string) {
 	defer s.onlineLock.Unlock()
 	s.online[appId] = time.Now()
 	log.Info().Any("application", appId).Msg("Application joined.")
+	go s.a.OnStatusChange(appId, automation.ONLINE)
 }
 
 func (s *s) Left(appId string) {
@@ -89,6 +98,7 @@ func (s *s) Left(appId string) {
 	defer s.onlineLock.Unlock()
 	delete(s.online, appId)
 	log.Info().Any("application", appId).Msg("Application went away.")
+	go s.a.OnStatusChange(appId, automation.OFFLINE)
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
@@ -293,4 +303,74 @@ func (s *s) isOnline(appId string) bool {
 	defer s.onlineLock.RUnlock()
 	_, ok := s.online[appId]
 	return ok
+}
+
+func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {
+	s.c.PersistStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
+		Actions: func() []configurations.Action {
+			actions := make([]configurations.Action, 0)
+			for _, a := range trigger.Actions {
+				actions = append(actions, configurations.Action{
+					Name:   a.Name,
+					Script: a.Script,
+				})
+			}
+			return actions
+		}(),
+	})
+	return api.StatusChangeTrigger{
+		Actions: trigger.Actions,
+	}
+}
+
+func (s *s) DeleteStatusChangeTrigger(appId string) {
+	s.c.DeleteStatusChangeTrigger(appId)
+}
+
+func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {
+	s.c.UpdateStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
+		Actions: func() []configurations.Action {
+			actions := make([]configurations.Action, 0)
+			for _, a := range trigger.Actions {
+				actions = append(actions, configurations.Action{
+					Name:   a.Name,
+					Script: a.Script,
+				})
+			}
+			return actions
+		}(),
+	})
+	tr := s.c.GetStatusChangeTrigger(appId)
+	return api.StatusChangeTrigger{
+		Actions: func() []api.Action {
+			acts := make([]api.Action, 0)
+			for _, a := range tr.Actions {
+				acts = append(acts, api.Action{
+					Name:   a.Name,
+					Script: a.Script,
+				})
+			}
+			return acts
+		}(),
+	}
+}
+
+func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
+	tr := s.c.GetStatusChangeTrigger(appId)
+	if tr.Id == 0 {
+		return nil
+	} else {
+		return &api.StatusChangeTrigger{
+			Actions: func() []api.Action {
+				acts := make([]api.Action, 0)
+				for _, a := range tr.Actions {
+					acts = append(acts, api.Action{
+						Name:   a.Name,
+						Script: a.Script,
+					})
+				}
+				return acts
+			}(),
+		}
+	}
 }

@@ -7,12 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestMain(m *testing.M) {
-
-// 	code := m.Run()
-// 	os.Exit(code)
-// }
-
 func TestPersistApplication(t *testing.T) {
 	repo := New(t.TempDir() + "/test.sqlite")
 	a := repo.PersistApplication(Application{
@@ -144,4 +138,128 @@ func TestIsAllowed(t *testing.T) {
 
 	assert.True(t, repo.IsAllowed("appid1", "apikey1"), "Application not allowed.")
 	assert.False(t, repo.Login("appid2", "apikey1"), "Application incorrectly allowed.")
+}
+
+func TestListMeasurementTriggers(t *testing.T) {
+	repo := New(t.TempDir() + "/tmp.sqlite")
+
+	repo.PersistApplication(Application{
+		Id:     "appid1",
+		ApiKey: "apikey1",
+		Name:   "appname1",
+	})
+
+	mt1 := MeasurementTrigger{
+		MeasurementName: "Measurement1",
+		Actions: []Action{
+			{
+				Name:   "Action1",
+				Script: "Script1",
+			},
+			{
+				Name:   "Action2",
+				Script: "Script2",
+			},
+		},
+	}
+	mt2 := MeasurementTrigger{
+		MeasurementName: "Measurement2",
+		Actions: []Action{
+			{
+				Name:   "Action3",
+				Script: "Script1",
+			},
+			{
+				Name:   "Action4",
+				Script: "Script2",
+			},
+		},
+	}
+
+	repo.PersitMeasurementTrigger("appid1", mt1)
+	repo.PersitMeasurementTrigger("appid1", mt2)
+
+	mts := repo.ListMeasurementTriggers("appid1")
+	assert.Len(t, mts, 2)
+	for _, mt := range mts {
+		assert.Len(t, mt.Actions, 2)
+	}
+}
+
+func TestListStatusChangeTriggers(t *testing.T) {
+	repo := New(t.TempDir() + "/tmp.sqlite")
+
+	repo.PersistApplication(Application{
+		Id:     "appid1",
+		ApiKey: "apikey1",
+		Name:   "appname1",
+	})
+
+	st1 := StatusChangeTrigger{
+		Actions: []Action{
+			{
+				Name:   "Action1",
+				Script: "Script1",
+			},
+			{
+				Name:   "Action2",
+				Script: "Script2",
+			},
+		},
+	}
+
+	repo.PersistStatusChangeTrigger("appid1", st1)
+
+	tr := repo.GetStatusChangeTrigger("appid1")
+	assert.Len(t, tr.Actions, 2)
+
+}
+
+func TestUpdateStatusChangeTrigger(t *testing.T) {
+	repo := New(t.TempDir() + "/tmp.sqlite")
+
+	repo.PersistApplication(Application{
+		Id:     "appid1",
+		ApiKey: "apikey1",
+		Name:   "appname1",
+	})
+
+	st1 := StatusChangeTrigger{
+		Actions: []Action{
+			{
+				Name:   "Action1",
+				Script: "Script1",
+			},
+			{
+				Name:   "Action2",
+				Script: "Script2",
+			},
+		},
+	}
+
+	repo.PersistStatusChangeTrigger("appid1", st1)
+
+	tr := repo.GetStatusChangeTrigger("appid1")
+	assert.Len(t, tr.Actions, 2)
+
+	st2 := StatusChangeTrigger{
+		Actions: []Action{
+			{
+				Name:   "Action1",
+				Script: "Script1",
+			},
+			{
+				Name:   "Action2",
+				Script: "Script2",
+			},
+		},
+	}
+	repo.UpdateStatusChangeTrigger("appid1", st2)
+	tr = repo.GetStatusChangeTrigger("appid1")
+	assert.Len(t, tr.Actions, 2)
+	assert.Equal(t, "Action1", tr.Actions[0].Name)
+	assert.Equal(t, "Action2", tr.Actions[1].Name)
+	assert.Equal(t, "Script1", tr.Actions[0].Script)
+	assert.Equal(t, "Script2", tr.Actions[1].Script)
+
 }

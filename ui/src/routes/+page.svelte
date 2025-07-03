@@ -24,6 +24,7 @@
 	import DeleteApplication from '../DeleteApplication.svelte';
 	import { ListApplications, Logout } from '../service';
 	import ViewMeasurements from '../ViewMeasurements.svelte';
+	import Automation from '../Automation.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -63,6 +64,7 @@
 		<TableHeadCell>Name</TableHeadCell>
 		<TableHeadCell>Measurements</TableHeadCell>
 		<TableHeadCell>Configuration</TableHeadCell>
+		<TableHeadCell>Automation</TableHeadCell>
 		<TableHeadCell>Delete</TableHeadCell>
 	</TableHead>
 	<TableBody>
@@ -79,6 +81,7 @@
 				<TableBodyCell>{ti.name}</TableBodyCell>
 				<TableBodyCell><ViewMeasurements app={ti}></ViewMeasurements></TableBodyCell>
 				<TableBodyCell><EditConfig app={ti}></EditConfig></TableBodyCell>
+				<TableBodyCell><Automation app={ti}></Automation></TableBodyCell>
 				<TableBodyCell><DeleteApplication app={ti} {dataChanged}></DeleteApplication></TableBodyCell>
 			</TableBodyRow>
 		{/each}

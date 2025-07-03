@@ -1,5 +1,16 @@
 components:
   schemas:
+    Action:
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+        script:
+          type: string
+      required:
+        - name
+        - script
+      type: object
     Application:
       additionalProperties: false
       properties:
@@ -24,11 +35,13 @@ components:
           readOnly: true
           type: string
         isOnline:
+          readOnly: true
           type: boolean
         measurements:
           items:
             type: string
           nullable: true
+          readOnly: true
           type: array
         name:
           type: string
@@ -208,6 +221,21 @@ components:
         - page
         - pageSize
         - total
+      type: object
+    StatusChangeTrigger:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          example: https://example.com/schemas/StatusChangeTrigger.json
+          format: uri
+          readOnly: true
+          type: string
+        actions:
+          items:
+            $ref: "#/components/schemas/Action"
+          nullable: true
+          type: array
       type: object
   securitySchemes:
     apiKey:
@@ -515,6 +543,115 @@ paths:
           description: Error
       security:
         - apiKey: []
+  /application/{id}/trigger/status:
+    delete:
+      operationId: deleteStatusChangeTrigger
+      parameters:
+        - description: Id of the application to get.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application to get.
+            type: string
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+    get:
+      operationId: getStatusChangeTrigger
+      parameters:
+        - description: Id of the application to get.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application to get.
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusChangeTrigger"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+    post:
+      operationId: addStatusChangeTrigger
+      parameters:
+        - description: Id of the application to get.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application to get.
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusChangeTrigger"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusChangeTrigger"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+    put:
+      operationId: updateStatusChangeTrigger
+      parameters:
+        - description: Id of the application to get.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application to get.
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusChangeTrigger"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusChangeTrigger"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
   /applications:
     get:
       operationId: listApplications
@@ -544,7 +681,7 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-              description: Login credentialsrv.
+              description: Login credentials
         required: true
       responses:
         "200":
