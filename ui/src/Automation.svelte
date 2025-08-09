@@ -23,7 +23,7 @@
 		Label,
 		Input
 	} from 'flowbite-svelte';
-	import CodeEditor from '$lib/components/code-editor.svelte';
+	import CodeEditor from '$lib/components/CodeEditor.svelte';
 	import { CodeOutline } from 'flowbite-svelte-icons';
 	import {
 		AddStatusChangeTrigger,

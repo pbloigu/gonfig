@@ -17,11 +17,16 @@ const config = {
 			fallback: undefined,
 			precompress: false,
 			strict: true
-		})
+		}),
+		// importing Monaco editor somehow breaks chunking so for now we
+		// just dump the world and everything in it in one huge pile. Sorry 'bout that.
+		output: {
+			bundleStrategy: 'single'
+		}
 	},
 	compilerOptions: {
 		customElement: true
-	}
+	},
 
 };
 

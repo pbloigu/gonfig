@@ -1,3 +1,13 @@
+<svelte:options
+	customElement={{
+		tag: 'code-editor',
+		shadow: 'none',
+		props: {
+			app: { reflect: true, type: 'Object' }
+		}
+	}}
+/>
+
 <!-- Courtesy of https://github.com/ala-garbaa-pro/svelte-5-monaco-editor-two-way-binding -->
 <script lang="ts">
 	import loader from '@monaco-editor/loader';
