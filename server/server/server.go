@@ -24,14 +24,17 @@ type Server interface {
 }
 
 type Params struct {
-	BackedPort    int
-	BackendAddr   string
-	FrontendPort  int
-	FrontendAddr  string
-	CcPort        int
-	CcAddr        string
-	DbLoc         string
-	MeasurementDb string
+	BackedPort        int
+	BackendAddr       string
+	BackendForceIpv4  bool
+	FrontendPort      int
+	FrontendAddr      string
+	FrontendForceIpv4 bool
+	CcPort            int
+	CcAddr            string
+	CcForceIpv4       bool
+	DbLoc             string
+	MeasurementDb     string
 }
 
 func New(p Params) Server {
@@ -65,9 +68,9 @@ func (s *server) Stop(timeout time.Duration) {
 }
 
 func (s *server) startApis() {
-	s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr}, s.s)
-	s.b = backend.New(backend.Config{Port: s.p.BackedPort, Addr: s.p.BackendAddr}, s.s)
-	s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr}, s.s)
+	s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s)
+	s.b = backend.New(backend.Config{Port: s.p.BackedPort, Addr: s.p.BackendAddr, ForceIpv4: s.p.BackendForceIpv4}, s.s)
+	s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
 
 	s.f.Start()
 	s.b.Start()

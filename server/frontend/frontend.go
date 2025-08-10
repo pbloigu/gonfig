@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -18,8 +19,9 @@ import (
 )
 
 type Config struct {
-	Port int
-	Addr string
+	Port      int
+	Addr      string
+	ForceIpv4 bool
 }
 
 type Frontend interface {
@@ -101,13 +103,24 @@ func (f *frontend) Start() {
 	}
 	f.http = srv
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		l, err := net.Listen(f.selectNetwork(), srv.Addr)
+		if err != nil {
+			log.Fatal().AnErr("error", err).Msg("Failed to start listener.")
+		}
+		if err := srv.Serve(l); err != nil && err != http.ErrServerClosed {
 			log.Fatal().AnErr("error", err).Msg("Failed to start frontend")
 		}
 	}()
 	log.Info().Any("port", f.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started frontend.")
 }
 
+func (f frontend) selectNetwork() string {
+	if f.config.ForceIpv4 {
+		return "tcp4"
+	} else {
+		return "tcp"
+	}
+}
 func isStatic(path string) bool {
 	return !(strings.HasPrefix(path, "/application") ||
 		strings.HasPrefix(path, "/login") ||

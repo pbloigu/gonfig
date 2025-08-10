@@ -35,14 +35,17 @@ func main() {
 	}
 
 	s := server.New(server.Params{
-		MeasurementDb: cstr,
-		DbLoc:         os.TempDir() + "/tmp.sqlite",
-		BackedPort:    8081,
-		BackendAddr:   "localhost",
-		FrontendPort:  8080,
-		FrontendAddr:  "localhost",
-		CcPort:        9000,
-		CcAddr:        "localhost",
+		MeasurementDb:     cstr,
+		DbLoc:             os.TempDir() + "/tmp.sqlite",
+		BackedPort:        8081,
+		BackendAddr:       "0.0.0.0",
+		BackendForceIpv4:  true,
+		FrontendPort:      8080,
+		FrontendAddr:      "0.0.0.0",
+		FrontendForceIpv4: true,
+		CcPort:            9000,
+		CcAddr:            "0.0.0.0",
+		CcForceIpv4:       true,
 	})
 	s.Start()
 	fmt.Printf("DEV SERVER STARTED.\n")

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button, Input, Label, P, Heading, Card } from 'flowbite-svelte';
-	import { Login } from '../../service';
+	import { Login } from '../../lib/service';
 	let username: string = '';
 	let password: string = '';
 

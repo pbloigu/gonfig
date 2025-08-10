@@ -19,8 +19,8 @@
 		ToolbarButton
 	} from 'flowbite-svelte';
 	import { CodeOutline } from 'flowbite-svelte-icons';
-	import { type Application } from './client/definitions';
-	import { AddApplication } from './service';
+	import { type Application } from '$lib/client/definitions';
+	import { AddApplication } from '../service';
 	let { dataChanged } = $props();
 	let app: Application = $state({ name: '', configuration: { data: '' } });
 	

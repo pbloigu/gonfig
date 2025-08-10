@@ -20,7 +20,7 @@
 		uiHelpers
 	} from 'flowbite-svelte';
 	import { CodeOutline } from 'flowbite-svelte-icons';
-	import { UpdateConfiguration } from './service';
+	import { UpdateConfiguration } from '$lib/service';
 	let { app } = $props();
 
 	

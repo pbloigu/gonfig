@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -15,8 +16,9 @@ import (
 )
 
 type Config struct {
-	Port int
-	Addr string
+	Port      int
+	Addr      string
+	ForceIpv4 bool
 }
 
 type Backend interface {
@@ -76,11 +78,23 @@ func (b *backend) startRestApi() {
 	b.http = srv
 
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		l, err := net.Listen(b.selectNetwork(), srv.Addr)
+		if err != nil {
+			log.Fatal().AnErr("error", err).Msg("Failed to start listener.")
+		}
+		if err := srv.Serve(l); err != nil && err != http.ErrServerClosed {
 			log.Fatal().AnErr("error", err).Msg("Failed to start backend")
 		}
 	}()
 	log.Info().Any("port", b.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started backend REST services.")
+}
+
+func (b backend) selectNetwork() string {
+	if b.config.ForceIpv4 {
+		return "tcp4"
+	} else {
+		return "tcp"
+	}
 }
 
 func def(method string, path string) huma.Operation {

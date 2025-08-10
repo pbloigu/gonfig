@@ -25,12 +25,14 @@ type Client interface {
 	GetConfiguration() (api.Configuration, error)
 	GetMeasurement(string) (api.Measurement, error)
 	AddMeasurement(api.Measurement) error
+	RegisterRPC(string, func(context.Context, *wamp.Invocation) nexus.InvokeResult) error
 }
 
 type client struct {
-	config Config
-	c      *nexus.Client
-	logger stdlog.StdLog
+	config          Config
+	c               *nexus.Client
+	logger          stdlog.StdLog
+	ccStatusChannel chan bool
 }
 
 type Config struct {
@@ -117,54 +119,49 @@ func (c client) AddMeasurement(measurement api.Measurement) error {
 
 func NewFromConfig(logger stdlog.StdLog, config Config) (Client, error) {
 	c := client{
-		logger: logger,
-		config: config,
+		logger:          logger,
+		config:          config,
+		ccStatusChannel: make(chan bool),
 	}
 	if err := c.config.check(); err != nil {
 		return nil, err
 	}
-	err := c.connect()
-	if err != nil {
-		return nil, err
-	} else {
-		go c.startCc()
-	}
-	return c, nil
+	go c.startCc()
+	return &c, nil
 }
 
 func New(logger stdlog.StdLog) (Client, error) {
-
 	c := client{
-		logger: logger,
-		config: Config{},
+		logger:          logger,
+		config:          Config{},
+		ccStatusChannel: make(chan bool),
 	}
 	c.config.readConfiguration()
 	if err := c.config.check(); err != nil {
 		return nil, err
 	}
-	err := c.connect()
-	if err != nil {
-		return nil, err
-	} else {
-		go c.startCc()
-	}
-	return c, nil
+	go c.startCc()
+	return &c, nil
 }
 
-func (c client) startCc() {
+func (c *client) RegisterRPC(name string, f func(c context.Context, w *wamp.Invocation) nexus.InvokeResult) error {
+	for s := range c.ccStatusChannel {
+		if s {
+			return c.c.Register(name, f, nil)
+		} else {
+			continue
+		}
+	}
+	return nil
+}
+
+func (c *client) startCc() {
 
 	for {
-		log.Info().Msg("C&C listener connected.")
+		c.connect()
 		<-c.c.Done()
+		c.ccStatusChannel <- false
 		log.Info().Msg("C&C lost connection to the server.")
-		for {
-			log.Info().Msg("Reconnecting...")
-			if err := c.connect(); err != nil {
-				time.Sleep(time.Second * 3)
-			} else {
-				break
-			}
-		}
 	}
 }
 
@@ -176,21 +173,26 @@ func (c Config) check() error {
 	}
 }
 
-func (c *client) connect() error {
-	cfg := nexus.Config{
-		Realm:         "gonfig.cc",
-		Serialization: nexus.JSON,
-		Logger:        c.logger,
-		HelloDetails: wamp.Dict{"authmethods": []string{"Custom-Basic"}, "Authorization": "Basic " +
-			base64.StdEncoding.EncodeToString([]byte(c.config.AppId+":"+c.config.ApiKey))},
-	}
-	cli, err := nexus.ConnectNet(context.Background(), fmt.Sprintf("ws://%s:%d/ws", c.config.ServerHost, c.config.CcPort), cfg)
-	if err != nil {
-		log.Error().AnErr("error", err).Msg("Failed to estabilsh C&C connection.")
-		return err
-	} else {
-		c.c = cli
-		return nil
+func (c *client) connect() {
+	for {
+		cfg := nexus.Config{
+			Realm:         "gonfig.cc",
+			Serialization: nexus.JSON,
+			Logger:        c.logger,
+			HelloDetails: wamp.Dict{"authmethods": []string{"Custom-Basic"}, "Authorization": "Basic " +
+				base64.StdEncoding.EncodeToString([]byte(c.config.AppId+":"+c.config.ApiKey))},
+		}
+		cli, err := nexus.ConnectNet(context.Background(), fmt.Sprintf("ws://%s:%d/ws", c.config.ServerHost, c.config.CcPort), cfg)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Failed to estabilsh C&C connection.")
+			time.Sleep(time.Second * 3)
+			log.Info().Msg("Reconnecting...")
+		} else {
+			c.c = cli
+			log.Info().Msg("C&C listener connected.")
+			c.ccStatusChannel <- true
+			return
+		}
 	}
 }
 

@@ -1,8 +1,7 @@
 export const ssr = false;
 export const prerender = true;
-import { InitApi } from '../service';
+import { InitApi, ListApplications } from '$lib/service';
 import type { PageLoad } from './$types';
-import { ListApplications } from '../service';
 const { MODE } = import.meta.env;
 
 

@@ -25,8 +25,8 @@
 		TableBodyCell,
 		Pagination
 	} from 'flowbite-svelte';
-	import { AddMeasurement, ListMeasurements, ListMeasurementValues } from './service';
-	import type { MeasurementValues } from './client/definitions';
+	import { AddMeasurement, ListMeasurements, ListMeasurementValues } from '$lib/service';
+	import type { MeasurementValues } from '$lib/client/definitions';
 	import { ArrowLeftOutline, ArrowRightOutline } from 'flowbite-svelte-icons';
 
 	interface MeasurementName {

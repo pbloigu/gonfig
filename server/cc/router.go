@@ -3,6 +3,8 @@ package cc
 import (
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,8 +16,9 @@ import (
 )
 
 type Config struct {
-	Port int
-	Addr string
+	Port      int
+	Addr      string
+	ForceIpv4 bool
 }
 
 type Router interface {
@@ -84,15 +87,34 @@ func (r *r) Start() {
 	go func() {
 		wss := router.NewWebsocketServer(nxr)
 		wss.EnableRequestCapture = true
-		closer, err := wss.ListenAndServe(fmt.Sprintf("%s:%d", r.config.Addr, r.config.Port))
+
+		srv := &http.Server{
+			Addr:    fmt.Sprintf("%s:%d", r.config.Addr, r.config.Port),
+			Handler: wss,
+		}
+
+		l, err := net.Listen(r.selectNetwork(), srv.Addr)
+		if err != nil {
+			log.Fatal().AnErr("error", err).Msg("Failed to start listener.")
+		}
+		r.closer = l
+		err = srv.Serve(l)
 		if err != nil {
 			log.Fatal().AnErr("error", err).Msg("Failed to start C&C router.")
 		}
-		r.closer = closer
+
 	}()
 	r.caller, err = newCaller(nxr, "gonfig.cc", r.service)
 	if err != nil {
 		log.Fatal().AnErr("error", err).Msg("Unable to get local caller.")
 	}
 	log.Info().Any("port", r.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started C&C router.")
+}
+
+func (r r) selectNetwork() string {
+	if r.config.ForceIpv4 {
+		return "tcp4"
+	} else {
+		return "tcp"
+	}
 }

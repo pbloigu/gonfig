@@ -19,12 +19,12 @@
 
 	} from 'flowbite-svelte';
 
-	import EditConfig from '../EditConfig.svelte';
-	import AddApplication from '../AddApplication.svelte';
-	import DeleteApplication from '../DeleteApplication.svelte';
-	import { ListApplications, Logout } from '../service';
-	import ViewMeasurements from '../ViewMeasurements.svelte';
-	import Automation from '../Automation.svelte';
+	import EditConfig from '$lib/components/EditConfig.svelte';
+	import AddApplication from '../lib/components/AddApplication.svelte';
+	import DeleteApplication from '$lib/components/DeleteApplication.svelte';
+	import { ListApplications, Logout } from '$lib/service';
+	import ViewMeasurements from '$lib/components/ViewMeasurements.svelte';
+	import Automation from '$lib/components/automation/Automation.svelte';
 
 	let { data }: PageProps = $props();
 

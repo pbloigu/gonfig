@@ -10,7 +10,7 @@
 
 <script lang="ts">
 	import { Button, P, Modal, uiHelpers } from 'flowbite-svelte';
-	import { DeleteApplication } from './service';
+	import { DeleteApplication } from '../service';
 	let { app, dataChanged } = $props();
 
 	let modalStatus = $state(false);
