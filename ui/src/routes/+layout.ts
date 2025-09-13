@@ -1,8 +1,8 @@
 export const ssr = false;
 export const prerender = true;
-import { InitApi, ListApplications } from '$lib/service';
+import { InitApi } from '$lib/service';
 import type { PageLoad } from './$types';
-const { MODE } = import.meta.env;
+const { MODE, VITE_API_URL } = import.meta.env;
 
 
 export const load: PageLoad = async () => {
@@ -11,7 +11,7 @@ export const load: PageLoad = async () => {
 
 function resolveBaseUri(): string {
 	if (MODE == "development") {
-		return "http://localhost:8080"
+		return VITE_API_URL
 	} else {
 		return window.location.protocol + "//" + window.location.host
 	}

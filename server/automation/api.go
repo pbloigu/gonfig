@@ -1,13 +1,11 @@
 package automation
 
 import (
-	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/measurements"
 	"github.com/rs/zerolog/log"
 )
 
 type db struct {
-	c configurations.Cached
 	m measurements.Measurements
 }
 

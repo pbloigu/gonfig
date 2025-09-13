@@ -10,13 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Cached interface {
-	GetStatusChangeActions(appId string) []Action
-	ListApplicationIds() []string
-}
-
 type Configurations interface {
-	AsCached() Cached
 	DeleteApplication(id string)
 	GetApplication(id string) Application
 	GetConfiguration(appId string) Configuration
@@ -32,6 +26,8 @@ type Configurations interface {
 	UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger)
 	GetStatusChangeTrigger(appId string) StatusChangeTrigger
 	DeleteStatusChangeTrigger(appId string)
+	GetStatusChangeActions(appId string) []Action
+	ListApplicationIds() []string
 }
 
 type c struct {
@@ -67,10 +63,6 @@ func New(dbLoc string) Configurations {
 	}
 	c.populateTriggerCaches()
 
-	return c
-}
-
-func (c *c) AsCached() Cached {
 	return c
 }
 
@@ -149,7 +141,7 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 		}
 	default:
 		{
-			err := fmt.Errorf("Unable to handle action of type %s", t)
+			err := fmt.Errorf("unable to handle action of type %s", t)
 			log.Error().AnErr("error", err).Msg("Could not list actions.")
 			return nil, err
 		}

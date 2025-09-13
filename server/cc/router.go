@@ -11,7 +11,7 @@ import (
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/router/auth"
 	"github.com/gammazero/nexus/v3/wamp"
-	"github.com/pbloigu/gonfig/server/service"
+	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/rs/zerolog/log"
 )
 
@@ -28,13 +28,13 @@ type Router interface {
 
 type r struct {
 	config  Config
-	service service.Service
+	service automation.Service
 	nxr     router.Router
 	closer  io.Closer
 	caller  caller
 }
 
-func NewRouter(c Config, s service.Service) Router {
+func NewRouter(c Config, s automation.Service) Router {
 	return &r{
 		config:  c,
 		service: s,
@@ -73,7 +73,7 @@ func (r *r) Start() {
 			{
 				URI:            wamp.URI("gonfig.cc"),
 				AnonymousAuth:  false,
-				Authenticators: []auth.Authenticator{newAuthenticator(r.service)},
+				Authenticators: []auth.Authenticator{newAuthenticator(r.service.IsAllowed)},
 			},
 		},
 	}

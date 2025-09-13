@@ -13,7 +13,7 @@ func TestCC(t *testing.T) {
 	t.Setenv("CC_PORT", "9000")
 
 	t.Run("TestCC", func(t *testing.T) {
-		_, err := New(log.Default())
+		_, err := New(log.Default(), nil)
 		if err != nil {
 			t.Errorf("%v", err)
 		}

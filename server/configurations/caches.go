@@ -60,7 +60,7 @@ func (ac *appCache) values() []string {
 	ac.m.RLock()
 	defer ac.m.RUnlock()
 	vals := make([]string, len(ac.c))
-	for k, _ := range ac.c {
+	for k := range ac.c {
 		vals = append(vals, k)
 	}
 	return vals

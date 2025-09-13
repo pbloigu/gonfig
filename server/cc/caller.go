@@ -1,12 +1,14 @@
 package cc
 
 import (
+	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/wamp"
-	"github.com/pbloigu/gonfig/server/service"
+	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,10 +16,10 @@ type caller struct {
 	c        *client.Client
 	sessions map[wamp.ID]string
 	lock     *sync.RWMutex
-	service  service.Service
+	service  automation.Service
 }
 
-func newCaller(nxr router.Router, realm string, service service.Service) (caller, error) {
+func newCaller(nxr router.Router, realm string, service automation.Service) (caller, error) {
 	c, err := getClient(nxr, realm)
 	if err != nil {
 		return caller{}, err
@@ -55,6 +57,14 @@ func newCaller(nxr router.Router, realm string, service service.Service) (caller
 			delete(clr.sessions, session)
 			go clr.service.Left(appId)
 
+		}, nil)
+		c.Subscribe(string(wamp.MetaEventRegOnCreate), func(event *wamp.Event) {
+			args := event.Arguments[1].(wamp.Dict)
+			invoke := args["invoke"]
+			match := args["match"]
+			uri := args["uri"].(wamp.URI)
+
+			fmt.Printf("\ninvoke: %s, match: %s, uri: %s\n", reflect.TypeOf(invoke), reflect.TypeOf(match), reflect.TypeOf(uri))
 		}, nil)
 		return clr, nil
 	}

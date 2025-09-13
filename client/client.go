@@ -25,14 +25,13 @@ type Client interface {
 	GetConfiguration() (api.Configuration, error)
 	GetMeasurement(string) (api.Measurement, error)
 	AddMeasurement(api.Measurement) error
-	RegisterRPC(string, func(context.Context, *wamp.Invocation) nexus.InvokeResult) error
 }
 
 type client struct {
-	config          Config
-	c               *nexus.Client
-	logger          stdlog.StdLog
-	ccStatusChannel chan bool
+	config Config
+	c      *nexus.Client
+	logger stdlog.StdLog
+	rpc    RpcFunctions
 }
 
 type Config struct {
@@ -41,6 +40,14 @@ type Config struct {
 	CcPort     int
 	AppId      string
 	ApiKey     string
+	CCEnabled  bool
+}
+
+type RpcFunction func(c context.Context, w *wamp.Invocation) nexus.InvokeResult
+type RpcFunctions map[string]RpcFunction
+
+func (rpc RpcFunction) toWamp() func(c context.Context, w *wamp.Invocation) nexus.InvokeResult {
+	return rpc
 }
 
 func (c client) GetConfiguration() (api.Configuration, error) {
@@ -117,11 +124,11 @@ func (c client) AddMeasurement(measurement api.Measurement) error {
 	return nil
 }
 
-func NewFromConfig(logger stdlog.StdLog, config Config) (Client, error) {
+func NewFromConfig(logger stdlog.StdLog, config Config, rpcFunctions map[string]RpcFunction) (Client, error) {
 	c := client{
-		logger:          logger,
-		config:          config,
-		ccStatusChannel: make(chan bool),
+		logger: logger,
+		config: config,
+		rpc:    rpcFunctions,
 	}
 	if err := c.config.check(); err != nil {
 		return nil, err
@@ -130,11 +137,11 @@ func NewFromConfig(logger stdlog.StdLog, config Config) (Client, error) {
 	return &c, nil
 }
 
-func New(logger stdlog.StdLog) (Client, error) {
+func New(logger stdlog.StdLog, rpcFunctions map[string]RpcFunction) (Client, error) {
 	c := client{
-		logger:          logger,
-		config:          Config{},
-		ccStatusChannel: make(chan bool),
+		logger: logger,
+		config: Config{},
+		rpc:    rpcFunctions,
 	}
 	c.config.readConfiguration()
 	if err := c.config.check(); err != nil {
@@ -144,23 +151,25 @@ func New(logger stdlog.StdLog) (Client, error) {
 	return &c, nil
 }
 
-func (c *client) RegisterRPC(name string, f func(c context.Context, w *wamp.Invocation) nexus.InvokeResult) error {
-	for s := range c.ccStatusChannel {
-		if s {
-			return c.c.Register(name, f, nil)
-		} else {
-			continue
+func (c *client) registerRpc() error {
+	if c.rpc != nil {
+		for n, f := range c.rpc {
+			if err := c.c.Register(n, f.toWamp(), nil); err != nil {
+				return err
+			}
+			log.Info().Msg(fmt.Sprintf("Registered RPC function %s", n))
 		}
 	}
 	return nil
 }
 
 func (c *client) startCc() {
-
+	if !c.config.CCEnabled {
+		log.Info().Msg("C&C channel not enabled.")
+	}
 	for {
 		c.connect()
 		<-c.c.Done()
-		c.ccStatusChannel <- false
 		log.Info().Msg("C&C lost connection to the server.")
 	}
 }
@@ -190,7 +199,9 @@ func (c *client) connect() {
 		} else {
 			c.c = cli
 			log.Info().Msg("C&C listener connected.")
-			c.ccStatusChannel <- true
+			if err := c.registerRpc(); err != nil {
+				log.Error().AnErr("error", err).Msg("Failed to register RPC endpoints.")
+			}
 			return
 		}
 	}

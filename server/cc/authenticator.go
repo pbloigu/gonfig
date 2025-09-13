@@ -5,15 +5,14 @@ import (
 
 	"github.com/gammazero/nexus/v3/router/auth"
 	"github.com/gammazero/nexus/v3/wamp"
-	"github.com/pbloigu/gonfig/server/service"
 )
 
 type authenticator struct {
-	service service.Service
+	isAllowed func(appId string, apiKey string) bool
 }
 
-func newAuthenticator(s service.Service) auth.Authenticator {
-	return authenticator{service: s}
+func newAuthenticator(isAllowed func(appId string, apiKey string) bool) auth.Authenticator {
+	return authenticator{isAllowed: isAllowed}
 }
 
 func (a authenticator) AuthMethod() string {
@@ -26,7 +25,7 @@ func (a authenticator) Authenticate(sid wamp.ID, details wamp.Dict, client wamp.
 
 	if err != nil {
 		return nil, err
-	} else if !a.service.IsAllowed(appId, apiKey) {
+	} else if !a.isAllowed(appId, apiKey) {
 		return nil, errors.New("Unauthorized")
 	} else {
 		return &wamp.Welcome{

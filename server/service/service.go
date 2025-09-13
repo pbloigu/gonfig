@@ -1,24 +1,20 @@
 package service
 
 import (
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/icza/gox/gox"
 	"github.com/pbloigu/gonfig/api"
-	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/measurements"
-	"github.com/rs/zerolog/log"
 )
 
 // Service interface with all public functions in this file
 type Service interface {
 	NewPagination(size int, defaultSize int, page int) Pargination
 	NewSort(sort string, defaultSort string, dir string) Sort
-	Joined(appId string)
-	Left(appId string)
+
 	UpdateApplication(application api.Application) api.Application
 	AddApplication(application api.Application) api.Application
 	GetApplication(id string) api.Application
@@ -40,11 +36,8 @@ type Service interface {
 }
 
 type s struct {
-	m          measurements.Measurements
-	c          configurations.Configurations
-	a          automation.Service
-	online     map[string]time.Time
-	onlineLock sync.RWMutex
+	m measurements.Measurements
+	c configurations.Configurations
 }
 
 type Direction string
@@ -64,41 +57,13 @@ type Pargination struct {
 	Size int
 }
 
-func New(dbLoc string, measurementDb string) Service {
-	mch := make(chan measurements.Measurements)
-	cch := make(chan configurations.Configurations)
-
-	go func() {
-		mch <- measurements.New(measurementDb)
-	}()
-	go func() {
-		cch <- configurations.New(dbLoc)
-	}()
+func New(m measurements.Measurements, c configurations.Configurations) Service {
 
 	s := &s{
-		m:          <-mch,
-		c:          <-cch,
-		online:     make(map[string]time.Time),
-		onlineLock: sync.RWMutex{},
+		m: m,
+		c: c,
 	}
-	s.a = automation.New(s.c.AsCached(), s.m)
 	return s
-}
-
-func (s *s) Joined(appId string) {
-	s.onlineLock.Lock()
-	defer s.onlineLock.Unlock()
-	s.online[appId] = time.Now()
-	log.Info().Any("application", appId).Msg("Application joined.")
-	go s.a.OnStatusChange(appId, automation.ONLINE)
-}
-
-func (s *s) Left(appId string) {
-	s.onlineLock.Lock()
-	defer s.onlineLock.Unlock()
-	delete(s.online, appId)
-	log.Info().Any("application", appId).Msg("Application went away.")
-	go s.a.OnStatusChange(appId, automation.OFFLINE)
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
@@ -181,7 +146,6 @@ func (s *s) GetApplication(id string) api.Application {
 			Data: a.Configuration.Data,
 			Date: a.Configuration.CreatedAt,
 		},
-		IsOnline: s.isOnline(a.Id),
 	}
 }
 
@@ -195,7 +159,6 @@ func (s *s) ListApplications() []api.Application {
 				Data: a.Configuration.Data,
 				Date: a.Configuration.CreatedAt,
 			},
-			IsOnline: s.isOnline(a.Id),
 		})
 	}
 	return result
@@ -296,13 +259,6 @@ func (s *s) IsAllowed(appId string, apiKey string) bool {
 
 func (s *s) Login(login string, password string) bool {
 	return s.c.Login(login, password)
-}
-
-func (s *s) isOnline(appId string) bool {
-	s.onlineLock.RLock()
-	defer s.onlineLock.RUnlock()
-	_, ok := s.online[appId]
-	return ok
 }
 
 func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {

@@ -19,17 +19,19 @@ func hello(ctx context.Context, i *wamp.Invocation) nexus.InvokeResult {
 }
 
 func main() {
-	cl, _ := client.NewFromConfig(log.Default(), client.Config{
+	var rpc = client.RpcFunctions{"hello": hello}
+	client.NewFromConfig(log.Default(), client.Config{
 		ServerHost: "localhost",
 		CcPort:     9000,
 		RestPort:   8081,
 		AppId:      "app1",
 		ApiKey:     "app1",
-	})
+		CCEnabled:  true,
+	}, rpc)
+	fmt.Println("STARTED")
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	cl.RegisterRPC("hello", hello)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
 	<-c
-	fmt.Sprintf("SHUT DOWN")
+	fmt.Println("SHUT DOWN")
 }
