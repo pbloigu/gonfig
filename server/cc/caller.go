@@ -79,7 +79,7 @@ func getClient(nxr router.Router, realm string) (*client.Client, error) {
 	}
 	client, err := client.ConnectLocal(nxr, cfg)
 	if err != nil {
-		log.Fatal().AnErr("error", err).Msg("Failed to register local client.")
+		log.Error().AnErr("error", err).Msg("Failed to register local client.")
 		return nil, err
 	}
 	log.Info().Msg("Local RPC client attached.")

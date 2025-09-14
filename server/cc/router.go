@@ -31,13 +31,14 @@ type r struct {
 	service automation.Service
 	nxr     router.Router
 	closer  io.Closer
-	caller  caller
+	callers map[string]caller
 }
 
 func NewRouter(c Config, s automation.Service) Router {
 	return &r{
 		config:  c,
 		service: s,
+		callers: make(map[string]caller, 0),
 	}
 }
 func (r *r) Stop(timeout time.Duration) {
@@ -69,13 +70,18 @@ func (r *r) Start() {
 	// Create router instance.
 	routerConfig := &router.Config{
 		Debug: log.Debug().Enabled(),
-		RealmConfigs: []*router.RealmConfig{
-			{
-				URI:            wamp.URI("gonfig.cc"),
-				AnonymousAuth:  false,
-				Authenticators: []auth.Authenticator{newAuthenticator(r.service.IsAllowed)},
-			},
-		},
+		RealmConfigs: func() []*router.RealmConfig {
+			appIds := r.service.ListApplicationIds()
+			configs := make([]*router.RealmConfig, len(appIds))
+			for i, appId := range r.service.ListApplicationIds() {
+				configs[i] = &router.RealmConfig{
+					URI:            wamp.URI(appId),
+					AnonymousAuth:  false,
+					Authenticators: []auth.Authenticator{newAuthenticator(appId, r.service.IsAllowed)},
+				}
+			}
+			return configs
+		}(),
 	}
 	nxr, err := router.NewRouter(routerConfig, &log.Logger)
 	if err != nil {
@@ -104,10 +110,14 @@ func (r *r) Start() {
 		}
 
 	}()
-	r.caller, err = newCaller(nxr, "gonfig.cc", r.service)
-	if err != nil {
-		log.Fatal().AnErr("error", err).Msg("Unable to get local caller.")
+	for _, appId := range r.service.ListApplicationIds() {
+		c, err := newCaller(r.nxr, appId, r.service)
+		if err != nil {
+			log.Fatal().AnErr("error", err).Msg("Unable to get local caller.")
+		}
+		r.callers[appId] = c
 	}
+
 	log.Info().Any("port", r.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started C&C router.")
 }
 

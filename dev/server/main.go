@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	_ "embed"
 	"fmt"
 	"os"
@@ -47,12 +46,14 @@ func main() {
 		CcAddr:            "0.0.0.0",
 		CcForceIpv4:       true,
 	})
-	s.Start()
-	fmt.Printf("DEV SERVER STARTED.\n")
 
 	loadConfig(os.TempDir() + "/tmp.sqlite")
 	loadData(cstr)
 	fmt.Print("DATA LOADED.\n")
+
+	s.Start()
+	fmt.Printf("DEV SERVER STARTED.\n")
+
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
@@ -65,10 +66,5 @@ func loadConfig(dbLoc string) {
 }
 
 func loadData(connStr string) {
-	ctx := context.Background()
-	o, _ := sql.Open("mysql", connStr+"?multiStatements=true&parseTime=true")
-	_, err := o.ExecContext(ctx, data)
-	if err != nil {
-		panic(err)
-	}
+	database.New(connStr+"?multiStatements=true&parseTime=true", data, "mysql")
 }

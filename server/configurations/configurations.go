@@ -67,7 +67,7 @@ func New(dbLoc string) Configurations {
 }
 
 func (c *c) populateTriggerCaches() {
-	appIds := make([]string, 0)
+
 	r, err := c.db.Context().Query(`
 		SELECT id
 		FROM Application
@@ -76,7 +76,7 @@ func (c *c) populateTriggerCaches() {
 		log.Panic().AnErr("error", err).Msg("Unable to list application.")
 		return
 	}
-	r.Close()
+	defer r.Close()
 	for r.Next() {
 		var appId string
 		err = r.Scan(&appId)
@@ -84,13 +84,13 @@ func (c *c) populateTriggerCaches() {
 			log.Panic().AnErr("error", err).Msg("Unable to select application id.")
 			return
 		}
-		appIds = append(appIds, appId)
+		log.Debug().Any("appId", appId).Msg("Found app.")
 		c.apps.put(appId, true)
 	}
 
 	waiter := make(chan bool, 3)
 	go func() {
-		for _, appId := range appIds {
+		for _, appId := range c.apps.values() {
 			tr := c.GetStatusChangeTrigger(appId)
 			c.statusActions.put(appId, tr.Actions)
 		}
@@ -98,7 +98,7 @@ func (c *c) populateTriggerCaches() {
 	}()
 
 	go func() {
-		for _, appId := range appIds {
+		for _, appId := range c.apps.values() {
 			mts := c.ListMeasurementTriggers(appId)
 			for _, mt := range mts {
 				c.measurementActions.put(fmt.Sprintf("%s:%s", appId, mt.MeasurementName), mt.Actions)

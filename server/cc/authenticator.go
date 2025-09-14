@@ -9,10 +9,11 @@ import (
 
 type authenticator struct {
 	isAllowed func(appId string, apiKey string) bool
+	realm     string
 }
 
-func newAuthenticator(isAllowed func(appId string, apiKey string) bool) auth.Authenticator {
-	return authenticator{isAllowed: isAllowed}
+func newAuthenticator(realm string, isAllowed func(appId string, apiKey string) bool) auth.Authenticator {
+	return authenticator{isAllowed: isAllowed, realm: realm}
 }
 
 func (a authenticator) AuthMethod() string {
@@ -25,7 +26,7 @@ func (a authenticator) Authenticate(sid wamp.ID, details wamp.Dict, client wamp.
 
 	if err != nil {
 		return nil, err
-	} else if !a.isAllowed(appId, apiKey) {
+	} else if a.realm != appId || !a.isAllowed(appId, apiKey) {
 		return nil, errors.New("Unauthorized")
 	} else {
 		return &wamp.Welcome{

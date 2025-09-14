@@ -17,6 +17,7 @@ type Service interface {
 	Joined(appId string)
 	Left(appId string)
 	IsAllowed(appId string, apiKey string) bool
+	ListApplicationIds() []string
 }
 
 type service struct {
@@ -33,6 +34,10 @@ func New(m measurements.Measurements, c configurations.Configurations) Service {
 		online:     make(map[string]time.Time),
 		onlineLock: sync.RWMutex{},
 	}
+}
+
+func (s *service) ListApplicationIds() []string {
+	return s.c.ListApplicationIds()
 }
 
 func (s *service) Joined(appId string) {

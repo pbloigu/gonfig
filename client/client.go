@@ -185,7 +185,7 @@ func (c Config) check() error {
 func (c *client) connect() {
 	for {
 		cfg := nexus.Config{
-			Realm:         "gonfig.cc",
+			Realm:         c.config.AppId,
 			Serialization: nexus.JSON,
 			Logger:        c.logger,
 			HelloDetails: wamp.Dict{"authmethods": []string{"Custom-Basic"}, "Authorization": "Basic " +
