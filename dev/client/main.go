@@ -14,7 +14,7 @@ import (
 )
 
 func hello(ctx context.Context, i *wamp.Invocation) nexus.InvokeResult {
-	fmt.Printf("HELLO")
+	fmt.Println("HELLO")
 	return nexus.InvokeResult{}
 }
 

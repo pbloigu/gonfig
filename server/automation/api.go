@@ -1,16 +1,17 @@
 package automation
 
 import (
-	"github.com/pbloigu/gonfig/server/measurements"
+	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
 
 type data struct {
-	s *service
+	s service.Service
 }
 
 type ipc struct {
-	s *service
+	s service.Service
 }
 
 type statusCtx struct {
@@ -24,12 +25,12 @@ type util struct {
 type logging struct {
 }
 
-func (d data) LastMeasurement(appId string, measurementName string) measurements.Measurement {
-	return d.s.getMeasurement(appId, measurementName)
+func (d data) LastMeasurement(appId string, measurementName string) api.Measurement {
+	return d.s.GetMeasurement(appId, measurementName)
 }
 
 func (d data) ListApplications() []string {
-	return d.s.ListApplicationIds()
+	return d.s.Cached().ListApplicationIds()
 }
 
 func (u util) Log() logging {
@@ -44,5 +45,5 @@ func (l logging) Debug(msg string) {
 }
 
 func (i ipc) Call(appId string, proc string) {
-
+	i.s.CallIpc(appId, proc)
 }

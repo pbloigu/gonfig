@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,7 +11,13 @@ import (
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/measurements"
+	"github.com/rs/zerolog/log"
 )
+
+type Cached interface {
+	ListApplicationIds() []string
+	GetStatusChangeActions(appId string) []api.Action
+}
 
 // Service interface with all public functions in this file
 type Service interface {
@@ -35,11 +42,24 @@ type Service interface {
 	DeleteStatusChangeTrigger(appId string)
 	UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
 	GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger
+	Joined(appId string)
+	Left(appId string)
+	IsOnline(appId string) bool
+	Cached() Cached
+	RegisterIpcCallback(callback func(appId string, ipc string))
+	CallIpc(appId string, ipc string)
 }
 
 type s struct {
-	m measurements.Measurements
-	c configurations.Configurations
+	m           measurements.Measurements
+	c           configurations.Configurations
+	online      map[string]time.Time
+	onlineLock  sync.RWMutex
+	ipcCallback func(appId string, ipc string)
+}
+
+type c struct {
+	s *s
 }
 
 type Direction string
@@ -59,13 +79,45 @@ type Pargination struct {
 	Size int
 }
 
-func New(m measurements.Measurements, c configurations.Configurations) Service {
+func (c *c) ListApplicationIds() []string {
+	return c.s.c.ListApplicationIds()
+}
 
+func (c *c) GetStatusChangeActions(appId string) []api.Action {
+	apiActions := make([]api.Action, 0)
+	modelActions := c.s.c.GetStatusChangeActions(appId)
+	for _, a := range modelActions {
+		apiActions = append(apiActions, api.Action{
+			Name:   a.Name,
+			Script: a.Script,
+		})
+	}
+	return apiActions
+}
+
+func New(measurementsDb string, dbLoc string) Service {
+	m, c := startDatabases(measurementsDb, dbLoc)
 	s := &s{
-		m: m,
-		c: c,
+		m:          m,
+		c:          c,
+		online:     make(map[string]time.Time),
+		onlineLock: sync.RWMutex{},
 	}
 	return s
+}
+
+func (s *s) Cached() Cached {
+	return &c{
+		s: s,
+	}
+}
+
+func (s *s) RegisterIpcCallback(callback func(appId string, ipc string)) {
+	s.ipcCallback = callback
+}
+
+func (s *s) CallIpc(appId string, ipc string) {
+	s.ipcCallback(appId, ipc)
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
@@ -108,6 +160,27 @@ func (s *s) NewSort(sort string, defaultSort string, dir string) Sort {
 	}
 }
 
+func (s *s) IsOnline(appId string) bool {
+	s.onlineLock.RLock()
+	defer s.onlineLock.RUnlock()
+	_, ok := s.online[appId]
+	return ok
+}
+
+func (s *s) Joined(appId string) {
+	s.onlineLock.Lock()
+	defer s.onlineLock.Unlock()
+	s.online[appId] = time.Now()
+	event.Emit(events.ApplicationOnline{AppId: appId})
+}
+
+func (s *s) Left(appId string) {
+	s.onlineLock.Lock()
+	defer s.onlineLock.Unlock()
+	delete(s.online, appId)
+	event.Emit(events.ApplicationOffline{AppId: appId})
+}
+
 func (s *s) UpdateApplication(application api.Application) api.Application {
 	s.c.UpdateApplication(configurations.Application{
 		Id:   application.Id,
@@ -148,6 +221,7 @@ func (s *s) GetApplication(id string) api.Application {
 			Data: a.Configuration.Data,
 			Date: a.Configuration.CreatedAt,
 		},
+		IsOnline: s.IsOnline(a.Id),
 	}
 }
 
@@ -161,6 +235,7 @@ func (s *s) ListApplications() []api.Application {
 				Data: a.Configuration.Data,
 				Date: a.Configuration.CreatedAt,
 			},
+			IsOnline: s.IsOnline(a.Id),
 		})
 	}
 	return result
@@ -335,4 +410,21 @@ func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
 			}(),
 		}
 	}
+}
+
+func startDatabases(measurementDb string, dbLoc string) (m measurements.Measurements, c configurations.Configurations) {
+	mch := make(chan measurements.Measurements)
+	cch := make(chan configurations.Configurations)
+
+	go func() {
+		mch <- measurements.New(measurementDb)
+	}()
+	go func() {
+		cch <- configurations.New(dbLoc)
+	}()
+
+	m = <-mch
+	c = <-cch
+	log.Info().Msg("Databases started.")
+	return
 }

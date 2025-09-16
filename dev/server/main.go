@@ -57,8 +57,12 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
-	s.Stop(time.Second * 5)
-	os.Remove(os.TempDir() + "/tmp.sqlite")
+
+	s.Stop(time.Second * 10)
+	if err := os.Remove(os.TempDir() + "/tmp.sqlite"); err != nil {
+		panic(err)
+	}
+	fmt.Println("DONE")
 }
 
 func loadConfig(dbLoc string) {

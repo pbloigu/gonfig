@@ -6,20 +6,18 @@ import (
 	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/pbloigu/gonfig/server/backend"
 	"github.com/pbloigu/gonfig/server/cc"
-	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/frontend"
-	"github.com/pbloigu/gonfig/server/measurements"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
 
 type server struct {
-	b  backend.Backend
-	f  frontend.Frontend
-	c  cc.Router
-	s  service.Service
-	as automation.Service
-	p  Params
+	b backend.Backend
+	f frontend.Frontend
+	c cc.Router
+	s service.Service
+	p Params
+	r automation.Runner
 }
 
 type Server interface {
@@ -48,28 +46,10 @@ func New(p Params) Server {
 }
 
 func (s *server) Start() {
-	m, c := s.startDatabases()
 
-	s.s = service.New(m, c)
-	s.as = automation.New(m, c)
+	s.s = service.New(s.p.MeasurementDb, s.p.DbLoc)
+	s.r = automation.New(s.s)
 	s.startApis()
-}
-
-func (s *server) startDatabases() (m measurements.Measurements, c configurations.Configurations) {
-	mch := make(chan measurements.Measurements)
-	cch := make(chan configurations.Configurations)
-
-	go func() {
-		mch <- measurements.New(s.p.MeasurementDb)
-	}()
-	go func() {
-		cch <- configurations.New(s.p.DbLoc)
-	}()
-
-	m = <-mch
-	c = <-cch
-	log.Info().Msg("Databases started.")
-	return
 }
 
 func (s *server) Stop(timeout time.Duration) {
@@ -95,7 +75,7 @@ func (s *server) startApis() {
 	c := make(chan bool)
 
 	go func() {
-		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s, s.as)
+		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s)
 		s.f.Start()
 		c <- true
 	}()
@@ -107,7 +87,7 @@ func (s *server) startApis() {
 	}()
 
 	go func() {
-		s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.as)
+		s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
 		s.c.Start()
 		c <- true
 	}()
