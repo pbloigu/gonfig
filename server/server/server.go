@@ -92,13 +92,29 @@ func (s *server) Stop(timeout time.Duration) {
 }
 
 func (s *server) startApis() {
-	s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s)
-	s.b = backend.New(backend.Config{Port: s.p.BackedPort, Addr: s.p.BackendAddr, ForceIpv4: s.p.BackendForceIpv4}, s.s)
-	s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.as)
+	c := make(chan bool)
 
-	s.f.Start()
-	s.b.Start()
-	s.c.Start()
+	go func() {
+		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s, s.as)
+		s.f.Start()
+		c <- true
+	}()
+
+	go func() {
+		s.b = backend.New(backend.Config{Port: s.p.BackedPort, Addr: s.p.BackendAddr, ForceIpv4: s.p.BackendForceIpv4}, s.s)
+		s.b.Start()
+		c <- true
+	}()
+
+	go func() {
+		s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.as)
+		s.c.Start()
+		c <- true
+	}()
+
+	for range 3 {
+		<-c
+	}
 
 	log.Info().Msg("API endpoints started.")
 }

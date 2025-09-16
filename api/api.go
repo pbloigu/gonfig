@@ -34,7 +34,6 @@ type Application struct {
 	Ip            string        `json:"ip" readOnly:"true" required:"false"`
 	Configuration Configuration `json:"configuration" required:"false"`
 	Measurements  []string      `json:"measurements" required:"false" readOnly:"true"`
-	IsOnline      bool          `json:"isOnline" required:"false" readOnly:"true"`
 }
 
 type LoginRequest struct {

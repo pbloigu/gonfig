@@ -5,8 +5,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/icza/gox/gox"
+	"github.com/kelindar/event"
 	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/configurations"
+	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/measurements"
 )
 
@@ -179,6 +181,10 @@ func (s *s) AddMeasurement(appId string, measurement api.Measurement) {
 	s.m.PeristMeasurement(appId, measurements.Measurement{
 		Name:      measurement.Name,
 		LastValue: measurement.LastValue,
+	})
+	event.Emit(events.NewMeasurementValue{
+		AppId:       appId,
+		Measurement: measurement,
 	})
 }
 

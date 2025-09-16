@@ -11,6 +11,7 @@ import (
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/pbloigu/gonfig/server/service"
 )
 
@@ -44,6 +45,7 @@ func (ts *tokenStorage) isValid(token string, expirySeconds int64) bool {
 
 type controller struct {
 	srv service.Service
+	a   automation.Service
 }
 
 func (c controller) getStatusChangeTrigger(ctx context.Context, input *struct {
@@ -91,6 +93,16 @@ func (c controller) getApplication(ctx context.Context, input *struct {
 		return nil, huma.Error404NotFound("No such application.")
 	}
 	return &struct{ Body api.Application }{Body: app}, nil
+}
+
+func (c controller) isOnline(ctx context.Context, input *struct {
+	Id string `path:"id" doc:"Id of the application to get."`
+}) (*struct{}, error) {
+	if c.a.IsOnline(input.Id) {
+		return &struct{}{}, nil
+	} else {
+		return nil, huma.Error404NotFound("Application is not online.")
+	}
 }
 
 func (c controller) listMeasurements(ctx context.Context, input *struct {

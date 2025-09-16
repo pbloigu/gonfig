@@ -35,6 +35,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/icza/gox v0.2.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/kelindar/event v1.5.2 // indirect
 	github.com/klauspost/compress v1.17.10 // indirect
 	github.com/knz/go-libedit v1.10.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

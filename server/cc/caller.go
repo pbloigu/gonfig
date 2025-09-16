@@ -8,7 +8,9 @@ import (
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/kelindar/event"
 	"github.com/pbloigu/gonfig/server/automation"
+	"github.com/pbloigu/gonfig/server/events"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,8 +33,8 @@ func newCaller(nxr router.Router, realm string, service automation.Service) (cal
 			service:  service,
 		}
 
-		c.Subscribe(string(wamp.MetaEventSessionOnJoin), func(event *wamp.Event) {
-			args := event.Arguments[0].(wamp.Dict)
+		c.Subscribe(string(wamp.MetaEventSessionOnJoin), func(wEvent *wamp.Event) {
+			args := wEvent.Arguments[0].(wamp.Dict)
 			session := args["session"].(wamp.ID)
 			if session == c.ID() {
 				// skip local subscribe
@@ -40,14 +42,14 @@ func newCaller(nxr router.Router, realm string, service automation.Service) (cal
 			}
 			auth := args["Authorization"].(string)
 
-			appid, _, _ := getAuthDetails(auth)
+			appId, _, _ := getAuthDetails(auth)
 			clr.lock.Lock()
 			defer clr.lock.Unlock()
-			clr.sessions[session] = appid
-			go clr.service.Joined(appid)
+			clr.sessions[session] = appId
+			event.Emit(events.ApplicationOnline{AppId: appId})
 		}, nil)
-		c.Subscribe(string(wamp.MetaEventSessionOnLeave), func(event *wamp.Event) {
-			session := event.Arguments[0].(wamp.ID)
+		c.Subscribe(string(wamp.MetaEventSessionOnLeave), func(wEvent *wamp.Event) {
+			session := wEvent.Arguments[0].(wamp.ID)
 			if session == c.ID() {
 				return
 			}
@@ -55,7 +57,7 @@ func newCaller(nxr router.Router, realm string, service automation.Service) (cal
 			defer clr.lock.Unlock()
 			appId := clr.sessions[session]
 			delete(clr.sessions, session)
-			go clr.service.Left(appId)
+			event.Emit(events.ApplicationOffline{AppId: appId})
 
 		}, nil)
 		c.Subscribe(string(wamp.MetaEventRegOnCreate), func(event *wamp.Event) {
