@@ -2,12 +2,12 @@ package events
 
 import "github.com/pbloigu/gonfig/api"
 
-type NewMeasurementValue struct {
-	AppId       string
-	Measurement api.Measurement
+type NewSeriesValue struct {
+	AppId  string
+	Series api.Series
 }
 
-func (nmv NewMeasurementValue) Type() uint32 {
+func (nsv NewSeriesValue) Type() uint32 {
 	return 1
 }
 

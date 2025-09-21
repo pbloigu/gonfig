@@ -140,7 +140,7 @@ func TestIsAllowed(t *testing.T) {
 	assert.False(t, repo.Login("appid2", "apikey1"), "Application incorrectly allowed.")
 }
 
-func TestListMeasurementTriggers(t *testing.T) {
+func TestListSeriesTriggers(t *testing.T) {
 	repo := New(t.TempDir() + "/tmp.sqlite")
 
 	repo.PersistApplication(Application{
@@ -149,8 +149,8 @@ func TestListMeasurementTriggers(t *testing.T) {
 		Name:   "appname1",
 	})
 
-	mt1 := MeasurementTrigger{
-		MeasurementName: "Measurement1",
+	mt1 := SeriesTrigger{
+		SeriesName: "Measurement1",
 		Actions: []Action{
 			{
 				Name:   "Action1",
@@ -162,8 +162,8 @@ func TestListMeasurementTriggers(t *testing.T) {
 			},
 		},
 	}
-	mt2 := MeasurementTrigger{
-		MeasurementName: "Measurement2",
+	mt2 := SeriesTrigger{
+		SeriesName: "Measurement2",
 		Actions: []Action{
 			{
 				Name:   "Action3",
@@ -176,10 +176,10 @@ func TestListMeasurementTriggers(t *testing.T) {
 		},
 	}
 
-	repo.PersitMeasurementTrigger("appid1", mt1)
-	repo.PersitMeasurementTrigger("appid1", mt2)
+	repo.PersitSeriesTrigger("appid1", mt1)
+	repo.PersitSeriesTrigger("appid1", mt2)
 
-	mts := repo.ListMeasurementTriggers("appid1")
+	mts := repo.ListSeriesTriggers("appid1")
 	assert.Len(t, mts, 2)
 	for _, mt := range mts {
 		assert.Len(t, mt.Actions, 2)

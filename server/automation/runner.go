@@ -26,7 +26,7 @@ func New(s service.Service) Runner {
 }
 
 func (r r) registerEventListeners() {
-	event.On(func(e events.NewMeasurementValue) {})
+	event.On(func(e events.NewSeriesValue) {})
 	event.On(func(e events.ApplicationOnline) { r.handleStatusChange(e.AppId, ONLINE) })
 	event.On(func(e events.ApplicationOffline) { r.handleStatusChange(e.AppId, OFFLINE) })
 }

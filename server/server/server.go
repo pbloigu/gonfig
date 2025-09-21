@@ -36,7 +36,7 @@ type Params struct {
 	CcAddr            string
 	CcForceIpv4       bool
 	DbLoc             string
-	MeasurementDb     string
+	SeriesDb          string
 }
 
 func New(p Params) Server {
@@ -47,7 +47,7 @@ func New(p Params) Server {
 
 func (s *server) Start() {
 
-	s.s = service.New(s.p.MeasurementDb, s.p.DbLoc)
+	s.s = service.New(s.p.SeriesDb, s.p.DbLoc)
 	s.r = automation.New(s.s)
 	s.startApis()
 }

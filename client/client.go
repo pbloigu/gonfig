@@ -23,8 +23,8 @@ import (
 
 type Client interface {
 	GetConfiguration() (api.Configuration, error)
-	GetMeasurement(string) (api.Measurement, error)
-	AddMeasurement(api.Measurement) error
+	GetMeasurement(string) (api.Series, error)
+	AddMeasurement(api.Series) error
 }
 
 type client struct {
@@ -76,32 +76,32 @@ func (c client) GetConfiguration() (api.Configuration, error) {
 	return config, err
 }
 
-func (c client) GetMeasurement(measurementName string) (api.Measurement, error) {
+func (c client) GetMeasurement(measurementName string) (api.Series, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/application/%s/measurement/%s",
 		c.config.ServerHost,
 		c.config.RestPort,
 		c.config.AppId,
 		measurementName), nil)
 	if err != nil {
-		return api.Measurement{}, err
+		return api.Series{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.ApiKey)
 	cl := &http.Client{}
 	r, err := cl.Do(req)
 	if err != nil {
-		return api.Measurement{}, err
+		return api.Series{}, err
 	}
 	defer r.Body.Close()
 
 	d, _ := io.ReadAll(r.Body)
-	m := api.Measurement{}
+	m := api.Series{}
 	err = json.Unmarshal(d, &m)
 	if err != nil {
 		return m, err
 	}
 	return m, nil
 }
-func (c client) AddMeasurement(measurement api.Measurement) error {
+func (c client) AddMeasurement(measurement api.Series) error {
 	b, err := json.Marshal(measurement)
 	if err != nil {
 		return err

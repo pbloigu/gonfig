@@ -28,26 +28,26 @@ func (c controller) getConfiguration(ctx context.Context, input *struct {
 	return &response, nil
 }
 
-func (c controller) getMeasurement(ctx context.Context, input *struct {
-	Id   string `path:"id" doc:"Id of the application for which to get the measurement."`
-	Name string `path:"name" doc:"Name of the measurement."`
+func (c controller) getSeries(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to get the series."`
+	Name string `path:"name" doc:"Name of the series."`
 }) (*struct {
-	Body api.Measurement
+	Body api.Series
 }, error) {
 	response := struct {
-		Body api.Measurement
+		Body api.Series
 	}{
-		Body: c.srv.GetMeasurement(input.Id, input.Name),
+		Body: c.srv.GetSeries(input.Id, input.Name),
 	}
 	return &response, nil
 }
 
-func (c controller) addMeasurement(ctx context.Context, input *struct {
-	Id   string `path:"id" doc:"Id of the application for which to add measurement."`
-	Name string `path:"name" doc:"The name of the measurement."`
-	Body api.Measurement
+func (c controller) addSeries(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to add series."`
+	Name string `path:"name" doc:"The name of the series."`
+	Body api.Series
 }) (*struct{}, error) {
-	c.srv.AddMeasurement(input.Id, input.Body)
+	c.srv.AddSeries(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 

@@ -25,8 +25,8 @@ type util struct {
 type logging struct {
 }
 
-func (d data) LastMeasurement(appId string, measurementName string) api.Measurement {
-	return d.s.GetMeasurement(appId, measurementName)
+func (d data) LastSeries(appId string, seriesName string) api.Series {
+	return d.s.GetSeries(appId, seriesName)
 }
 
 func (d data) ListApplications() []string {

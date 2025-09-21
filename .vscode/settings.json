@@ -5,7 +5,7 @@
   "go.testFlags": [
     "-v",
     "-count=1",
-    //"-httptest.serve=127.0.0.1:36599"
   ],
-  "go.testTimeout": "15s"
+  "go.testTimeout": "15s",
+  "go.testEnvFile": "${workspaceFolder}/.env.test",
 }

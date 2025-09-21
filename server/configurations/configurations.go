@@ -20,8 +20,8 @@ type Configurations interface {
 	PersistApplication(a Application) Application
 	PersistConfiguration(applicationId string, c Configuration)
 	UpdateApplication(a Application)
-	ListMeasurementTriggers(appId string) []MeasurementTrigger
-	PersitMeasurementTrigger(appId string, mt MeasurementTrigger)
+	ListSeriesTriggers(appId string) []SeriesTrigger
+	PersitSeriesTrigger(appId string, mt SeriesTrigger)
 	PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) StatusChangeTrigger
 	UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger)
 	GetStatusChangeTrigger(appId string) StatusChangeTrigger
@@ -31,11 +31,11 @@ type Configurations interface {
 }
 
 type c struct {
-	db                 database.Database
-	statusActions      actionCache
-	cronActions        actionCache
-	measurementActions actionCache
-	apps               appCache
+	db            database.Database
+	statusActions actionCache
+	cronActions   actionCache
+	seriesActions actionCache
+	apps          appCache
 }
 
 //go:embed schema.sql
@@ -52,7 +52,7 @@ func New(dbLoc string) Configurations {
 			c: make(map[string][]Action),
 			m: &sync.RWMutex{},
 		},
-		measurementActions: actionCache{
+		seriesActions: actionCache{
 			c: make(map[string][]Action),
 			m: &sync.RWMutex{},
 		},
@@ -99,9 +99,9 @@ func (c *c) populateTriggerCaches() {
 
 	go func() {
 		for _, appId := range c.apps.values() {
-			mts := c.ListMeasurementTriggers(appId)
+			mts := c.ListSeriesTriggers(appId)
 			for _, mt := range mts {
-				c.measurementActions.put(fmt.Sprintf("%s:%s", appId, mt.MeasurementName), mt.Actions)
+				c.seriesActions.put(fmt.Sprintf("%s:%s", appId, mt.SeriesName), mt.Actions)
 			}
 		}
 		waiter <- true
@@ -124,9 +124,9 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 	var column string
 	var id int
 	switch t := anyTrigger.(type) {
-	case MeasurementTrigger:
+	case SeriesTrigger:
 		{
-			column = "measurement_trigger_id"
+			column = "series_trigger_id"
 			id = t.Id
 		}
 	case CronTrigger:
@@ -262,20 +262,20 @@ func (c *c) GetStatusChangeTrigger(appId string) StatusChangeTrigger {
 		return tr, nil
 	})
 	if err != nil {
-		log.Panic().AnErr("error", err).Msg("Could not list measurement triggers.")
+		log.Panic().AnErr("error", err).Msg("Could not list series triggers.")
 	}
 
 	return tr.(StatusChangeTrigger)
 }
 
-func (c *c) ListMeasurementTriggers(appId string) []MeasurementTrigger {
+func (c *c) ListSeriesTriggers(appId string) []SeriesTrigger {
 	ms, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
-		ms := make([]MeasurementTrigger, 0)
+		ms := make([]SeriesTrigger, 0)
 		r, err := dba.Query(`
 			SELECT
 				id,
-				measurement_name
-			FROM MeasurementTrigger
+				series_name
+			FROM SeriesTrigger
 			WHERE application_id = ?
 			`, appId)
 		if err != nil {
@@ -284,8 +284,8 @@ func (c *c) ListMeasurementTriggers(appId string) []MeasurementTrigger {
 		}
 		defer r.Close()
 		for r.Next() {
-			m := MeasurementTrigger{}
-			err = r.Scan(&m.Id, &m.MeasurementName)
+			m := SeriesTrigger{}
+			err = r.Scan(&m.Id, &m.SeriesName)
 			if err != nil {
 				log.Panic().AnErr("error", err).Msg("Database operation failed.")
 			}
@@ -301,10 +301,10 @@ func (c *c) ListMeasurementTriggers(appId string) []MeasurementTrigger {
 	})
 
 	if err != nil {
-		log.Panic().AnErr("error", err).Msg("Could not list measurement triggers.")
+		log.Panic().AnErr("error", err).Msg("Could not list series triggers.")
 	}
 
-	return ms.([]MeasurementTrigger)
+	return ms.([]SeriesTrigger)
 }
 
 func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) StatusChangeTrigger {
@@ -358,39 +358,39 @@ func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) Sta
 	return c.GetStatusChangeTrigger(appId)
 }
 
-func (c *c) PersitMeasurementTrigger(appId string, mt MeasurementTrigger) {
+func (c *c) PersitSeriesTrigger(appId string, mt SeriesTrigger) {
 	_, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
 		_, err := dba.Exec(`
-			INSERT INTO MeasurementTrigger (application_id, measurement_name)
+			INSERT INTO SeriesTrigger (application_id, series_name)
 			VALUES (?, ?)
-		`, appId, mt.MeasurementName)
+		`, appId, mt.SeriesName)
 		if err != nil {
-			log.Error().AnErr("error", err).Msg("Could not insert measurement trigger.")
+			log.Error().AnErr("error", err).Msg("Could not insert series trigger.")
 			return nil, err
 		}
 		r, err := dba.Query(`
 			SELECT id
-			FROM MeasurementTrigger
+			FROM SeriesTrigger
 			WHERE application_id = ?
-			AND measurement_name = ?
-		`, appId, mt.MeasurementName)
+			AND series_name = ?
+		`, appId, mt.SeriesName)
 		if err != nil {
-			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
 		}
 		defer r.Close()
 		if !r.Next() {
-			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
 		}
 		var mtId int
 		if err = r.Scan(&mtId); err != nil {
-			log.Error().AnErr("error", err).Msg("Measurement trigger was not inserted.")
+			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
 		}
 		for _, a := range mt.Actions {
 			_, err := dba.Exec(`
-				INSERT INTO Action (name, script, measurement_trigger_id)
+				INSERT INTO Action (name, script, series_trigger_id)
 				VALUES (?, ?, ?)
 			`, a.Name, a.Script, mtId)
 			if err != nil {
@@ -401,7 +401,7 @@ func (c *c) PersitMeasurementTrigger(appId string, mt MeasurementTrigger) {
 		return nil, nil
 	})
 	if err != nil {
-		log.Panic().AnErr("error", err).Msg("Could not persist measurement trigger.")
+		log.Panic().AnErr("error", err).Msg("Could not persist series trigger.")
 	}
 }
 

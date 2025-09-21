@@ -34,7 +34,7 @@ func main() {
 	}
 
 	s := server.New(server.Params{
-		MeasurementDb:     cstr,
+		SeriesDb:          cstr,
 		DbLoc:             os.TempDir() + "/tmp.sqlite",
 		BackedPort:        8081,
 		BackendAddr:       "0.0.0.0",

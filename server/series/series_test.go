@@ -1,4 +1,4 @@
-package measurements
+package series
 
 import (
 	"context"
@@ -79,33 +79,33 @@ func clear() {
 }
 
 func TestInitPersistDelete(t *testing.T) {
-	repo.InitMeasurement("TestApp1", "testMeasurement1")
+	repo.InitSeries("TestApp1", "testMeasurement1")
 	testValue := "testValue1"
-	repo.PeristMeasurement("TestApp1", Measurement{
+	repo.PeristSeries("TestApp1", Series{
 		Name:      "testMeasurement1",
 		LastValue: &testValue,
 	})
-	m := repo.GetMeasurement("TestApp1", "testMeasurement1")
+	m := repo.GetSeries("TestApp1", "testMeasurement1")
 	assert.Equal(t, "testMeasurement1", m.Name)
 	assert.Equal(t, testValue, *m.LastValue)
 	repo.DeleteApplication("TestApp1")
 }
 
 func TestPersistMultiple(t *testing.T) {
-	repo.InitMeasurement("TestApp1", "testMeasurement1")
+	repo.InitSeries("TestApp1", "testMeasurement1")
 	testValue := "testValue1"
-	repo.PeristMeasurement("TestApp1", Measurement{
+	repo.PeristSeries("TestApp1", Series{
 		Name:      "testMeasurement1",
 		LastValue: &testValue,
 	})
 	testValue = "testValue2"
-	repo.PeristMeasurement("TestApp1", Measurement{
+	repo.PeristSeries("TestApp1", Series{
 		Name:      "testMeasurement1",
 		LastValue: &testValue,
 	})
 
-	m := repo.GetMeasurement("TestApp1", "testMeasurement1")
-	values := repo.ListMeasurementValues(m.Id, "created", "DESC", 1, 100)
+	m := repo.GetSeries("TestApp1", "testMeasurement1")
+	values := repo.ListSeriesValues(m.Id, "created", "DESC", 1, 100)
 	assert.Equal(t, 2, len(values))
 
 }

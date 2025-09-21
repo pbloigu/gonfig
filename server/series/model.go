@@ -1,11 +1,11 @@
-package measurements
+package series
 
-type MeasurementValue struct {
+type SeriesValue struct {
 	CreatedAt int
 	Data      *string
 }
 
-type Measurement struct {
+type Series struct {
 	Id            int
 	LastValueTime *int
 	LastValue     *string

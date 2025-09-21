@@ -103,27 +103,27 @@ func (c controller) isOnline(ctx context.Context, input *struct {
 	}
 }
 
-func (c controller) listMeasurements(ctx context.Context, input *struct {
+func (c controller) listSeries(ctx context.Context, input *struct {
 	Id string `path:"id" doc:"Id of the application to get."`
-}) (*struct{ Body []api.Measurement }, error) {
-	m := c.srv.ListMeasurements(input.Id)
-	return &struct{ Body []api.Measurement }{Body: m}, nil
+}) (*struct{ Body []api.Series }, error) {
+	m := c.srv.ListSeries(input.Id)
+	return &struct{ Body []api.Series }{Body: m}, nil
 }
 
-func (c controller) listMeasurementValues(ctx context.Context, input *struct {
+func (c controller) listSeriesValues(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application to get."`
-	Name string `path:"name" doc:"Name of the measurement."`
+	Name string `path:"name" doc:"Name of the series."`
 	Sort string `query:"sort" enum:"created,data" required:"false" doc:"Sort by." default:"created"`
 	Dir  string `query:"dir" enum:"asc,desc" required:"false" doc:"Sort direction." default:"desc"`
 	Page int    `query:"page" required:"false" doc:"Page number. 1-based, please." minimum:"1" default:"1"`
 	Size int    `query:"size" required:"false" maximum:"50" doc:"Page size." default:"10"`
-}) (*struct{ Body api.MeasurementValues }, error) {
-	mvs := c.srv.ListMeasurementValues(input.Id,
+}) (*struct{ Body api.SeriesValues }, error) {
+	mvs := c.srv.ListSeriesValues(input.Id,
 		input.Name,
 		c.srv.NewSort(input.Sort, "created", input.Dir),
 		c.srv.NewPagination(input.Size, 10, input.Page),
 	)
-	return &struct{ Body api.MeasurementValues }{Body: mvs}, nil
+	return &struct{ Body api.SeriesValues }{Body: mvs}, nil
 }
 
 func (c controller) addApplication(ctx context.Context, input *struct {
@@ -135,29 +135,29 @@ func (c controller) addApplication(ctx context.Context, input *struct {
 	return &struct{ Body api.Application }{Body: app}, nil
 }
 
-func (c controller) addMeasurement(ctx context.Context, input *struct {
-	Id   string `path:"id" doc:"Id of the application for which to add a new measurement."`
-	Body api.Measurement
+func (c controller) addSeries(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to add a new series."`
+	Body api.Series
 }) (*struct{}, error) {
-	c.srv.InitMeasurement(input.Id, input.Body)
+	c.srv.InitSeries(input.Id, input.Body)
 	return &struct{}{}, nil
 }
 
-func (c controller) getMeasurement(ctx context.Context, input *struct {
-	Id   string `path:"id" doc:"Id of the application for which to get the measurement."`
-	Name string `path:"name" doc:"Name of the measurement."`
+func (c controller) getSeries(ctx context.Context, input *struct {
+	Id   string `path:"id" doc:"Id of the application for which to get the series."`
+	Name string `path:"name" doc:"Name of the series."`
 }) (*struct {
-	Body api.Measurement
+	Body api.Series
 }, error) {
-	m := c.srv.GetMeasurement(input.Id, input.Name)
+	m := c.srv.GetSeries(input.Id, input.Name)
 
 	response := struct {
-		Body api.Measurement
+		Body api.Series
 	}{
 		Body: m,
 	}
 	if m.Name == "" {
-		return &response, huma.Error404NotFound("No such measurement.")
+		return &response, huma.Error404NotFound("No such series.")
 	}
 	return &response, nil
 }

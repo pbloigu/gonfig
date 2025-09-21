@@ -10,7 +10,7 @@ import (
 	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/events"
-	"github.com/pbloigu/gonfig/server/measurements"
+	"github.com/pbloigu/gonfig/server/series"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,12 +30,12 @@ type Service interface {
 	ListApplications() []api.Application
 	DeleteApplication(id string)
 	AddConfiguration(appId string, configuration api.Configuration)
-	AddMeasurement(appId string, measurement api.Measurement)
-	InitMeasurement(appId string, measurement api.Measurement)
+	AddSeries(appId string, series api.Series)
+	InitSeries(appId string, series api.Series)
 	GetConfiguration(appId string) api.Configuration
-	GetMeasurement(appId string, measurementName string) api.Measurement
-	ListMeasurementValues(appId string, measurementName string, sort Sort, pagination Pargination) api.MeasurementValues
-	ListMeasurements(appId string) []api.Measurement
+	GetSeries(appId string, seriesName string) api.Series
+	ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues
+	ListSeries(appId string) []api.Series
 	IsAllowed(appId string, apiKey string) bool
 	Login(login string, password string) bool
 	AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
@@ -51,7 +51,7 @@ type Service interface {
 }
 
 type s struct {
-	m           measurements.Measurements
+	serDb       series.SeriesDb
 	c           configurations.Configurations
 	online      map[string]time.Time
 	onlineLock  sync.RWMutex
@@ -95,10 +95,10 @@ func (c *c) GetStatusChangeActions(appId string) []api.Action {
 	return apiActions
 }
 
-func New(measurementsDb string, dbLoc string) Service {
-	m, c := startDatabases(measurementsDb, dbLoc)
+func New(seriesDb string, dbLoc string) Service {
+	serDb, c := startDatabases(seriesDb, dbLoc)
 	s := &s{
-		m:          m,
+		serDb:      serDb,
 		c:          c,
 		online:     make(map[string]time.Time),
 		onlineLock: sync.RWMutex{},
@@ -243,7 +243,7 @@ func (s *s) ListApplications() []api.Application {
 
 func (s *s) DeleteApplication(id string) {
 	s.c.DeleteApplication(id)
-	s.m.DeleteApplication(id)
+	s.serDb.DeleteApplication(id)
 }
 
 func (s *s) AddConfiguration(appId string, configuration api.Configuration) {
@@ -252,19 +252,19 @@ func (s *s) AddConfiguration(appId string, configuration api.Configuration) {
 	})
 }
 
-func (s *s) AddMeasurement(appId string, measurement api.Measurement) {
-	s.m.PeristMeasurement(appId, measurements.Measurement{
-		Name:      measurement.Name,
-		LastValue: measurement.LastValue,
+func (s *s) AddSeries(appId string, ser api.Series) {
+	s.serDb.PeristSeries(appId, series.Series{
+		Name:      ser.Name,
+		LastValue: ser.LastValue,
 	})
-	event.Emit(events.NewMeasurementValue{
-		AppId:       appId,
-		Measurement: measurement,
+	event.Emit(events.NewSeriesValue{
+		AppId:  appId,
+		Series: ser,
 	})
 }
 
-func (s *s) InitMeasurement(appId string, measurement api.Measurement) {
-	s.m.InitMeasurement(appId, measurement.Name)
+func (s *s) InitSeries(appId string, ser api.Series) {
+	s.serDb.InitSeries(appId, ser.Name)
 }
 
 func (s *s) GetConfiguration(appId string) api.Configuration {
@@ -275,9 +275,9 @@ func (s *s) GetConfiguration(appId string) api.Configuration {
 	}
 }
 
-func (s *s) GetMeasurement(appId string, measurementName string) api.Measurement {
-	m := s.m.GetMeasurement(appId, measurementName)
-	return api.Measurement{
+func (s *s) GetSeries(appId string, seriesName string) api.Series {
+	m := s.serDb.GetSeries(appId, seriesName)
+	return api.Series{
 		Name:          m.Name,
 		LastValue:     m.LastValue,
 		LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
@@ -293,19 +293,19 @@ func timePtr(unixTs *int) *time.Time {
 	}
 }
 
-func (s *s) ListMeasurementValues(appId string, measurementName string, sort Sort, pagination Pargination) api.MeasurementValues {
-	m := s.m.GetMeasurement(appId, measurementName)
-	if m != (measurements.Measurement{}) {
-		result := api.MeasurementValues{
-			Measurement: api.Measurement{
+func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues {
+	m := s.serDb.GetSeries(appId, seriesName)
+	if m != (series.Series{}) {
+		result := api.SeriesValues{
+			Series: api.Series{
 				Name:          m.Name,
 				LastValue:     m.LastValue,
 				LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
 			},
-			Values: func() []api.MeasurementValue {
-				mvs := make([]api.MeasurementValue, 0)
-				for _, mv := range s.m.ListMeasurementValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
-					mvs = append(mvs, api.MeasurementValue{
+			Values: func() []api.SeriesValue {
+				mvs := make([]api.SeriesValue, 0)
+				for _, mv := range s.serDb.ListSeriesValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
+					mvs = append(mvs, api.SeriesValue{
 						Data: mv.Data,
 						Time: time.Unix(int64(mv.CreatedAt), 0),
 					})
@@ -313,19 +313,19 @@ func (s *s) ListMeasurementValues(appId string, measurementName string, sort Sor
 				return mvs
 			}(),
 		}
-		result.Total = s.m.CountMeasurementValues(m.Id)
+		result.Total = s.serDb.CountSeriesValues(m.Id)
 		result.Page = pagination.Page
 		result.PageSize = pagination.Size
 		return result
 	} else {
-		return api.MeasurementValues{}
+		return api.SeriesValues{}
 	}
 }
 
-func (s *s) ListMeasurements(appId string) []api.Measurement {
-	result := make([]api.Measurement, 0)
-	for _, m := range s.m.ListMeasurements(appId) {
-		result = append(result, api.Measurement{
+func (s *s) ListSeries(appId string) []api.Series {
+	result := make([]api.Series, 0)
+	for _, m := range s.serDb.ListSeries(appId) {
+		result = append(result, api.Series{
 			Name:          m.Name,
 			LastValue:     m.LastValue,
 			LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
@@ -412,12 +412,12 @@ func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
 	}
 }
 
-func startDatabases(measurementDb string, dbLoc string) (m measurements.Measurements, c configurations.Configurations) {
-	mch := make(chan measurements.Measurements)
+func startDatabases(seriesDb string, dbLoc string) (m series.SeriesDb, c configurations.Configurations) {
+	mch := make(chan series.SeriesDb)
 	cch := make(chan configurations.Configurations)
 
 	go func() {
-		mch <- measurements.New(measurementDb)
+		mch <- series.New(seriesDb)
 	}()
 	go func() {
 		cch <- configurations.New(dbLoc)

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS Measurement (
+CREATE TABLE IF NOT EXISTS Series (
   id int NOT NULL AUTO_INCREMENT,
   application_id varchar(36) NOT NULL,
   name varchar(128) NOT NULL,

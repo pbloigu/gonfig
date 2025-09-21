@@ -7,20 +7,20 @@ type Configuration struct {
 	Date time.Time `json:"time" readOnly:"true" required:"false"`
 }
 
-type MeasurementValues struct {
-	Measurement Measurement        `json:"measurement"`
-	Values      []MeasurementValue `json:"values"`
-	Page        int                `json:"page"`
-	PageSize    int                `json:"pageSize"`
-	Total       int                `json:"total"`
+type SeriesValues struct {
+	Series   Series        `json:"series"`
+	Values   []SeriesValue `json:"values"`
+	Page     int           `json:"page"`
+	PageSize int           `json:"pageSize"`
+	Total    int           `json:"total"`
 }
 
-type MeasurementValue struct {
+type SeriesValue struct {
 	Data *string   `json:"data" maxLength:"128" required:"false" nullable:"true"`
 	Time time.Time `json:"time" readOnly:"true" required:"false" format:"date-time"`
 }
 
-type Measurement struct {
+type Series struct {
 	Name          string     `json:"name" requred:"true" maxLength:"128"`
 	LastValue     *string    `json:"lastValue" required:"false" readOnly:"true" nullable:"true"`
 	LastValueTime *time.Time `json:"lastValueTime" readOnly:"true" required:"false" format:"date-time" nullable:"true"`
@@ -33,7 +33,7 @@ type Application struct {
 	Hostname      string        `json:"hostname" readOnly:"true" required:"false"`
 	Ip            string        `json:"ip" readOnly:"true" required:"false"`
 	Configuration Configuration `json:"configuration" required:"false"`
-	Measurements  []string      `json:"measurements" required:"false" readOnly:"true"`
+	Series        []string      `json:"series" required:"false" readOnly:"true"`
 	IsOnline      bool          `json:"isOnline" required:"false" readOnly:"true"`
 }
 
@@ -53,9 +53,9 @@ type CronTrigger struct {
 	Actions        []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
-type MeasurementTrigger struct {
-	MeasurementName string   `json:"measurementName" required:"true" readOnly:"false"`
-	Actions         []Action `json:"actions" required:"false" readOnly:"false"`
+type SeriesTrigger struct {
+	SeriesName string   `json:"seriesName" required:"true" readOnly:"false"`
+	Actions    []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type StatusChangeTrigger struct {

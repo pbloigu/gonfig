@@ -23,10 +23,10 @@ type CronTrigger struct {
 	Actions        []Action
 }
 
-type MeasurementTrigger struct {
-	Id              int
-	MeasurementName string
-	Actions         []Action
+type SeriesTrigger struct {
+	Id         int
+	SeriesName string
+	Actions    []Action
 }
 
 type StatusChangeTrigger struct {

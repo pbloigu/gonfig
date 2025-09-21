@@ -19,11 +19,11 @@ CREATE TABLE IF NOT EXISTS User (
     password string
 );
 
-CREATE TABLE IF NOT EXISTS MeasurementTrigger (
+CREATE TABLE IF NOT EXISTS SeriesTrigger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     application_id string NOT NULL,
-    measurement_name string NOT NULL,
-    UNIQUE(application_id, measurement_name),
+    series_name string NOT NULL,
+    UNIQUE(application_id, series_name),
     FOREIGN KEY (application_id) REFERENCES Application(id)
 );
 
@@ -42,10 +42,10 @@ CREATE TABLE IF NOT EXISTS StatusTrigger (
 CREATE TABLE IF NOT EXISTS Action (
     name string UNIQUE NOT NULL,
     script string,
-    measurement_trigger_id integer,
+    series_trigger_id integer,
     cron_trigger_id integer,
     status_change_trigger_id integer,
-    FOREIGN KEY(measurement_trigger_id) REFERENCES MeasurementTrigger(id),
+    FOREIGN KEY(series_trigger_id) REFERENCES SeriesTrigger(id),
     FOREIGN KEY(cron_trigger_id) REFERENCES CronTrigger(id),
     FOREIGN KEY(status_change_trigger_id) REFERENCES StatusTrigger(id)
 );

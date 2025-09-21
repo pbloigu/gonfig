@@ -75,8 +75,8 @@ func parseEnv() {
 		params.DbLoc = v
 	}
 
-	if v := getEnvVariable("GONFIG_MEASUREMENT_DB"); v != "" {
-		params.MeasurementDb = v
+	if v := getEnvVariable("GONFIG_SERIES_DB"); v != "" {
+		params.SeriesDb = v
 	}
 
 }
@@ -99,7 +99,7 @@ func parseParams() {
 	flag.IntVar(&params.BackedPort, "backendPort", 8081, "Backend listen port. Default = 8081")
 	flag.StringVar(&params.BackendAddr, "backendAddr", "localhost", "Listen address for the backend.")
 	flag.StringVar(&params.DbLoc, "dbLocation", "/tmp/database.sqlite", "Location of the database. Default = /tmp/database.sqlite")
-	flag.StringVar(&params.MeasurementDb, "measurementDb", "", "Database connection string for measurements. Onyl Mysql/MariaDB are supported.")
+	flag.StringVar(&params.SeriesDb, "seriesDb", "", "Database connection string for time series. Onyl Mysql/MariaDB are supported.")
 
 	flag.Parse()
 }
