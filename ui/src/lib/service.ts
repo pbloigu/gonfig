@@ -1,18 +1,30 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import Api from "./client/api"
-import { type Application, type LoginResponse, type Measurement, type MeasurementValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
+import { type Application, type LoginResponse, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
 import { goto } from "$app/navigation";
-import { get } from "svelte/store";
-import { error } from "@sveltejs/kit";
+const { MODE, VITE_API_URL } = import.meta.env;
 
+
+export interface Error {
+    code?: number
+    message?: string
+}
 
 
 var baseUrl: string | undefined = undefined
 
 
+const resolveBaseUri = function(): string {
+    if (MODE == "development") {
+		return VITE_API_URL
+	} else {
+		return window.location.protocol + "//" + window.location.host
+	}
+}
+
 const getApi = function (): Api {
     var a = new Api({
-        baseURL: baseUrl
+        baseURL: resolveBaseUri()
     });
     a.axios.interceptors.request.use((r) => {
         r.headers.set("Authorization", "Bearer " + localStorage.getItem("apiKey"))
@@ -23,8 +35,17 @@ const getApi = function (): Api {
 }
 
 const defaultErrorHandler = async function (error: AxiosError) {
-        await goto("/loginform")
-        return Promise.reject(error)
+    if(error.response?.status == 401) {
+        await goto("/")
+    } else {
+        await goto("/error", {
+            state: {
+                code: error.response?.status,
+                message: error.cause
+            }
+        })
+    }
+    return Promise.reject(error)
 }
 
 const notFoundErrorHandler = async function (error: AxiosError) {
@@ -35,17 +56,12 @@ const notFoundErrorHandler = async function (error: AxiosError) {
     }
 }
 
-export const InitApi = function (baseUrlToSet: string) {
-    if (baseUrl == undefined) {
-        baseUrl = baseUrlToSet
-    }
-}
 
 export const Logout = async function () {
     const response: AxiosResponse<any, any> = await getApi().Default.logout(
         { Authorization: localStorage.getItem("apiKey") || "" }, {})
     return Promise.resolve(response.data).then((l: any) => {
-        goto("/loginform")
+        goto("/")
     })
 }
 
@@ -54,7 +70,7 @@ export const Login = async function name(username: string, password: string) {
         .catch((error: AxiosError) => defaultErrorHandler(error))
     Promise.resolve(response.data).then((l: LoginResponse) => {
         localStorage.setItem("apiKey", l.token)
-        goto("/")
+        goto("/applications")
     })
 }
 
@@ -64,14 +80,20 @@ export const ListApplications = async function (): Promise<Application[]> {
     return Promise.resolve(response.data);
 }
 
+export const GetApplication = async function (appId: string): Promise<Application> {
+    const response: AxiosResponse<WithoutWriteonly<Application>> = await getApi().Default.getApplication({ id: appId }, {})
+        .catch((error: AxiosError) => defaultErrorHandler(error))
+    return Promise.resolve(response.data)
+}
+
 export const AddApplication = async function (app: Application): Promise<Application> {
     const response = await getApi().Default.addApplication({}, app, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 }
 
-export const AddMeasurement = async function name(name: string, appId: string): Promise<Measurement> {
-    const response = await getApi().Default.addMeasurement({ id: appId }, { name: name }, {})
+export const AddSeries = async function name(name: string, appId: string): Promise<Series> {
+    const response = await getApi().Default.addSeries({ id: appId }, { name: name }, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 }
@@ -88,27 +110,27 @@ export const DeleteApplication = async function (appId: string) {
     return Promise.resolve(response.data)
 }
 
-export const ListMeasurements = async function (appId: string): Promise<Measurement[]> {
-    const response = await getApi().Default.listMeasurements({ id: appId }, {})
+export const ListSeries = async function (appId: string): Promise<Series[]> {
+    const response = await getApi().Default.listSeries({ id: appId }, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 }
 
-export const ListMeasurementValues = async function name(name: string, appId: string, page: number): Promise<MeasurementValues> {
-    const response = await getApi().Default.listMeasurementValues({
-            id: appId, 
-            name: name,
-            dir: "desc",
-            page: page,
-            size:10,
-            sort:"data"
-        }, {})
+export const ListSeriesValues = async function name(name: string, appId: string, page: number): Promise<SeriesValues> {
+    const response = await getApi().Default.listSeriesValues({
+        id: appId,
+        name: name,
+        dir: "desc",
+        page: page,
+        size: 10,
+        sort: "data"
+    }, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 
 }
 
-export const GetStatusChangeTrigger = async function(appId: string): Promise<StatusChangeTrigger | null> {
+export const GetStatusChangeTrigger = async function (appId: string): Promise<StatusChangeTrigger | null> {
     const response = await getApi().Default.getStatusChangeTrigger({ id: appId }, {})
         .catch((error: AxiosError) => notFoundErrorHandler(error))
     return Promise.resolve(response).then((r: AxiosResponse | null) => {
@@ -120,20 +142,20 @@ export const GetStatusChangeTrigger = async function(appId: string): Promise<Sta
     })
 }
 
-export const AddStatusChangeTrigger = async function(appId: string, trigger: StatusChangeTrigger): Promise<StatusChangeTrigger> {
-    const response = await getApi().Default.addStatusChangeTrigger({id: appId}, trigger, {})
+export const AddStatusChangeTrigger = async function (appId: string, trigger: StatusChangeTrigger): Promise<StatusChangeTrigger> {
+    const response = await getApi().Default.addStatusChangeTrigger({ id: appId }, trigger, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 }
 
-export const UpdateStatusChangeTrigger = async function(appId: string, trigger: StatusChangeTrigger) {
-    const response = await getApi().Default.updateStatusChangeTrigger({id: appId}, trigger, {})
+export const UpdateStatusChangeTrigger = async function (appId: string, trigger: StatusChangeTrigger) {
+    const response = await getApi().Default.updateStatusChangeTrigger({ id: appId }, trigger, {})
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
 }
 
 export const DeleteStatusChangeTrigger = async function (appId: string) {
-    const response = await getApi().Default.deleteStatusChangeTrigger({id: appId})
+    const response = await getApi().Default.deleteStatusChangeTrigger({ id: appId })
         .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data) 
+    return Promise.resolve(response.data)
 }

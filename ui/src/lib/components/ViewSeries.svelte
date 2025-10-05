@@ -25,11 +25,11 @@
 		TableBodyCell,
 		Pagination
 	} from 'flowbite-svelte';
-	import { AddMeasurement, ListMeasurements, ListMeasurementValues } from '$lib/service';
-	import type { MeasurementValues } from '$lib/client/definitions';
+	import { AddSeries, ListSeries, ListSeriesValues } from '$lib/service';
+	import type { SeriesValues } from '$lib/client/definitions';
 	import { ArrowLeftOutline, ArrowRightOutline } from 'flowbite-svelte-icons';
 
-	interface MeasurementName {
+	interface SeriesName {
 		value: string;
 		name: string;
 	}
@@ -39,17 +39,17 @@
 	const stateView = uiHelpers();
 	let modalStatus = $state(false);
 	let action: string = $state('INITIAL');
-	let measurementNames: MeasurementName[] = $state([]);
-	let measurementValues: MeasurementValues | undefined = $state();
-	let newMeasurement: string;
-	let selectedMeasurement: string | undefined = $state();
+	let seriesNames: SeriesName[] = $state([]);
+	let seriesValues: SeriesValues | undefined = $state();
+	let newSeries: string;
+	let selectedSeries: string | undefined = $state();
 	let helper = $state({ start: 1, end: 10, total: 100 });
 	let page = $state(1);
 
 	$effect(() => {
-		if (selectedMeasurement != undefined && selectedMeasurement.length > 0) {
-			ListMeasurementValues(selectedMeasurement, app.id, page).then((val: MeasurementValues) => {
-				measurementValues = val;
+		if (selectedSeries != undefined && selectedSeries.length > 0) {
+			ListSeriesValues(selectedSeries, app.id, page).then((val: SeriesValues) => {
+				seriesValues = val;
 				helper.total = val.total;
 				helper.start = (val.page - 1) * val.pageSize + 1;
 				helper.end = helper.start + Math.min(val.values.length, val.pageSize) - 1;
@@ -70,10 +70,10 @@
 		page++;
 	};
 
-	async function getMeasurements() {
-		measurementNames = [] as MeasurementName[];
-		(await ListMeasurements(app.id)).forEach((n) => {
-			measurementNames.push({
+	async function getSeries() {
+		seriesNames = [] as SeriesName[];
+		(await ListSeries(app.id)).forEach((n) => {
+			seriesNames.push({
 				name: n.name,
 				value: n.name
 			});
@@ -81,15 +81,15 @@
 	}
 
 	const showState = async () => {
-		await getMeasurements();
+		await getSeries();
 		modalStatus = true;
 	};
-	function addMeasurement() {
-		action = 'ADD_MEASUREMENT';
+	function addSeries() {
+		action = 'ADD_SERIES';
 	}
 	async function storeNew() {
-		await AddMeasurement(newMeasurement, app.id);
-		await getMeasurements();
+		await AddSeries(newSeries, app.id);
+		await getSeries();
 		action = 'INITIAL';
 	}
 </script>
@@ -97,23 +97,23 @@
 <Button color="secondary" onclick={showState}>View</Button>
 <Modal title="App state" bind:open={modalStatus}>
 	<P>App ID: {app.id}</P>
-	{#if selectedMeasurement != undefined && selectedMeasurement.length > 0}
-		<P>Measurement: {selectedMeasurement}</P>
+	{#if selectedSeries != undefined && selectedSeries.length > 0}
+		<P>Series: {selectedSeries}</P>
 	{/if}
 	{#if action == 'INITIAL'}
 		<P
-			>Select measurement: <Select
-				items={measurementNames}
-				bind:value={selectedMeasurement}
-				placeholder="Select measurement"
+			>Select series: <Select
+				items={seriesNames}
+				bind:value={selectedSeries}
+				placeholder="Select series"
 				class="!rounded-s-none"
 			/>
-			<Button size="sm" color="secondary" onclick={addMeasurement}>New</Button>
+			<Button size="sm" color="secondary" onclick={addSeries}>New</Button>
 		</P>
-	{:else if action == 'ADD_MEASUREMENT'}
-		<Label for="measurement-name">Name</Label>
+	{:else if action == 'ADD_SERIES'}
+		<Label for="series-name">Name</Label>
 		<!-- svelte-ignore binding_property_non_reactive -->
-		<Input id="measurement-name" type="text" bind:value={newMeasurement}></Input>
+		<Input id="series-name" type="text" bind:value={newSeries}></Input>
 		<Button size="sm" color="secondary" onclick={storeNew}>Add</Button>
 	{:else if action == 'SHOW_VALUES'}
 		<div class="flex flex-col items-center justify-center gap-3">
@@ -149,8 +149,8 @@
 				<TableHeadCell>Value</TableHeadCell>
 			</TableHead>
 			<TableBody class="h-96 overflow-y-auto">
-				{#if measurementValues != undefined}
-					{#each measurementValues.values as v}
+				{#if seriesValues != undefined}
+					{#each seriesValues.values as v}
 						<TableBodyRow style="height:1em">
 							<TableBodyCell>{v.time}</TableBodyCell>
 							<TableBodyCell>{v.data}</TableBodyCell>

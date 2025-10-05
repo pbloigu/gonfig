@@ -1,11 +1,10 @@
 <script lang="ts">
-	import '../app.css';
-	import { DarkMode } from 'flowbite-svelte';
-	let { children } = $props();
+	import { DarkMode } from "flowbite-svelte";
+    import '../app.css';
+    let { children } = $props();
+
 </script>
 <DarkMode />
 <div class="min-w-full">
-{@render children()}
+    {@render children()}
 </div>
-
-

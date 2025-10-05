@@ -22,6 +22,10 @@ const config = {
 		// just dump the world and everything in it in one huge pile. Sorry 'bout that.
 		output: {
 			bundleStrategy: 'single'
+		},
+
+		prerender: {
+			handleUnseenRoutes: 'warn'
 		}
 	},
 	compilerOptions: {

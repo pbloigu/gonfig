@@ -23,8 +23,8 @@ import (
 
 type Client interface {
 	GetConfiguration() (api.Configuration, error)
-	GetMeasurement(string) (api.Series, error)
-	AddMeasurement(api.Series) error
+	GetSeries(string) (api.Series, error)
+	AddSeries(api.Series) error
 }
 
 type client struct {
@@ -76,12 +76,12 @@ func (c client) GetConfiguration() (api.Configuration, error) {
 	return config, err
 }
 
-func (c client) GetMeasurement(measurementName string) (api.Series, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/application/%s/measurement/%s",
+func (c client) GetSeries(seriesName string) (api.Series, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/application/%s/series/%s",
 		c.config.ServerHost,
 		c.config.RestPort,
 		c.config.AppId,
-		measurementName), nil)
+		seriesName), nil)
 	if err != nil {
 		return api.Series{}, err
 	}
@@ -101,16 +101,16 @@ func (c client) GetMeasurement(measurementName string) (api.Series, error) {
 	}
 	return m, nil
 }
-func (c client) AddMeasurement(measurement api.Series) error {
-	b, err := json.Marshal(measurement)
+func (c client) AddSeries(series api.Series) error {
+	b, err := json.Marshal(series)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/application/%s/measurement/%s",
+	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:%d/application/%s/series/%s",
 		c.config.ServerHost,
 		c.config.RestPort,
 		c.config.AppId,
-		measurement.Name), bytes.NewBuffer(b))
+		series.Name), bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@
 		tag: 'status-changes-button',
 		shadow: 'none',
 		props: {
-			statusTrigger: { reflect: true, type: 'Object' },
             appId: {type: 'String'}
 		}
 	}}
@@ -12,9 +11,23 @@
 <script lang="ts">
 	import { Accordion, AccordionItem, Button, Input, Label, P, TabItem } from "flowbite-svelte";
 	import CodeEditor from "../CodeEditor.svelte";
-	import { AddStatusChangeTrigger, DeleteStatusChangeTrigger, UpdateStatusChangeTrigger } from "$lib/service";
-    let {statusTrigger, appId} = $props()
+	import { AddStatusChangeTrigger, DeleteStatusChangeTrigger, GetStatusChangeTrigger, UpdateStatusChangeTrigger } from "$lib/service";
+	import { onMount } from "svelte";
+	import type { StatusChangeTrigger } from "$lib/client/definitions";
+    let {appId} = $props()
     let isNew: boolean = $state(true);
+	let statusTrigger: StatusChangeTrigger = $state({
+		actions: []
+	})
+
+	onMount(() => {
+		GetStatusChangeTrigger(appId).then((result)  => {
+			if(result) {
+				statusTrigger = result
+				isNew = false
+			}
+		})
+	})
 
     const addStatusAction = () => {
 		statusTrigger.actions = [
@@ -60,12 +73,12 @@
 
 </script>
 
-<TabItem open title="Status actions">
+
 	{#if statusTrigger.actions != null && statusTrigger.actions.length > 0}
 		<Accordion>
 			{#each statusTrigger.actions as a, idx}
 				<AccordionItem>
-					{#snippet header()}{statusTrigger.actions[idx].name}{/snippet}
+					{#snippet header()}{statusTrigger.actions?.[idx]?.name}{/snippet}
 					<P>
 						<Label for="act-name-{idx}">Name</Label>
 						<Input id="act-name-{idx}" type="text" bind:value={statusTrigger.actions[idx].name}
@@ -90,4 +103,4 @@
         <Button color="secondary" onclick={saveChanges}>Save changes</Button>
 		<Button onclick={deleteTrigger} hidden={isNew}>Delete trigger</Button>
 	</P>
-</TabItem>
+

@@ -48,6 +48,6 @@
 	<Tabs>
 		<StatusChanges {statusTrigger} appId={app.id}></StatusChanges>
 		<TabItem title="Cron actions">No Cron actions</TabItem>
-		<TabItem title="Measurement actions">No Measurement actions</TabItem>
+		<TabItem title="Series actions">No series actions</TabItem>
 	</Tabs>
 </Modal>

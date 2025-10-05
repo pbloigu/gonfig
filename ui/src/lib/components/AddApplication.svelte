@@ -40,7 +40,7 @@
 	};
 </script>
 
-<Button size="sm" color="secondary" onclick={openDialog}>Add application</Button>
+<Button size="xs" color="secondary" onclick={openDialog}>Add application</Button>
 
 <Modal title="Application details" bind:open={modalStatus}>
 	{#if app.id == undefined}

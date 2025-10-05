@@ -2,7 +2,7 @@
 /* eslint-disable */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
-import type { Application, Configuration, Measurement, MeasurementValues, StatusChangeTrigger, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
+import type { Application, Configuration, Series, SeriesValues, StatusChangeTrigger, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
 
 export * from "./definitions";
 
@@ -53,32 +53,40 @@ export default class {
         );
     }
 
-    private addMeasurement(params: {
+    private isOnline(params: {
         'id': string
-    }, data: WithoutReadonly<Measurement>, options?: AxiosRequestConfig) {
-        return this.axios.post(
-            "/application/{id}/measurement".replace(/{id}/, String(params["id"])), data, options
+    }, options?: AxiosRequestConfig) {
+        return this.axios.get(
+            "/application/{id}/online".replace(/{id}/, String(params["id"])), options
         );
     }
 
-    private getMeasurement(params: {
+    private listSeries(params: {
+        'id': string
+    }, options?: AxiosRequestConfig) {
+        return this.axios.get<WithoutWriteonly<Series>[]>(
+            "/application/{id}/series".replace(/{id}/, String(params["id"])), options
+        );
+    }
+
+    private addSeries(params: {
+        'id': string
+    }, data: WithoutReadonly<Series>, options?: AxiosRequestConfig) {
+        return this.axios.post(
+            "/application/{id}/series".replace(/{id}/, String(params["id"])), data, options
+        );
+    }
+
+    private getSeries(params: {
         'id': string,
         'name': string
     }, options?: AxiosRequestConfig) {
-        return this.axios.get<WithoutWriteonly<Measurement>>(
-            "/application/{id}/measurement/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])), options
+        return this.axios.get<WithoutWriteonly<Series>>(
+            "/application/{id}/series/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])), options
         );
     }
 
-    private listMeasurements(params: {
-        'id': string
-    }, options?: AxiosRequestConfig) {
-        return this.axios.get<WithoutWriteonly<Measurement>[]>(
-            "/application/{id}/measurements".replace(/{id}/, String(params["id"])), options
-        );
-    }
-
-    private listMeasurementValues(params: {
+    private listSeriesValues(params: {
         'id': string,
         'name': string,
         'sort': "created" | "data",
@@ -86,8 +94,8 @@ export default class {
         'page': number,
         'size': number
     }, options?: AxiosRequestConfig) {
-        return this.axios.get<WithoutWriteonly<MeasurementValues>>(
-            "/application/{id}/measurements/{name}".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])),
+        return this.axios.get<WithoutWriteonly<SeriesValues>>(
+            "/application/{id}/series/{name}/values".replace(/{id}/, String(params["id"])).replace(/{name}/, String(params["name"])),
             Object.assign(
                 {},
                 {
@@ -164,10 +172,11 @@ export default class {
             updateApplication: this.updateApplication.bind(this),
             deleteApplication: this.deleteApplication.bind(this),
             addConfiguration: this.addConfiguration.bind(this),
-            addMeasurement: this.addMeasurement.bind(this),
-            getMeasurement: this.getMeasurement.bind(this),
-            listMeasurements: this.listMeasurements.bind(this),
-            listMeasurementValues: this.listMeasurementValues.bind(this),
+            isOnline: this.isOnline.bind(this),
+            listSeries: this.listSeries.bind(this),
+            addSeries: this.addSeries.bind(this),
+            getSeries: this.getSeries.bind(this),
+            listSeriesValues: this.listSeriesValues.bind(this),
             getStatusChangeTrigger: this.getStatusChangeTrigger.bind(this),
             addStatusChangeTrigger: this.addStatusChangeTrigger.bind(this),
             updateStatusChangeTrigger: this.updateStatusChangeTrigger.bind(this),

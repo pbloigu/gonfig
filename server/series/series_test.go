@@ -61,7 +61,7 @@ func clear() {
 		SELECT concat('DROP TABLE IF EXISTS ', table_name)
 		FROM information_schema.tables
 		WHERE table_schema = 'test'
-		AND table_name like 'MeasurementValue%'`)
+		AND table_name like 'SeriesValue%'`)
 
 	sqls := make([]string, 0)
 	for r.Next() {
@@ -74,7 +74,7 @@ func clear() {
 	for _, s := range sqls {
 		repo.db.Context().Exec(s)
 	}
-	repo.db.Context().Exec("DELETE FROM Measurement")
+	repo.db.Context().Exec("DELETE FROM Series")
 
 }
 

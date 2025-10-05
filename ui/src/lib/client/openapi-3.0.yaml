@@ -37,14 +37,14 @@ components:
         isOnline:
           readOnly: true
           type: boolean
-        measurements:
+        name:
+          type: string
+        series:
           items:
             type: string
           nullable: true
           readOnly: true
           type: array
-        name:
-          type: string
       required:
         - name
       type: object
@@ -154,12 +154,12 @@ components:
         - token
         - expiry
       type: object
-    Measurement:
+    Series:
       additionalProperties: false
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
-          example: https://example.com/schemas/Measurement.json
+          example: https://example.com/schemas/Series.json
           format: uri
           readOnly: true
           type: string
@@ -178,7 +178,7 @@ components:
       required:
         - name
       type: object
-    MeasurementValue:
+    SeriesValue:
       additionalProperties: false
       properties:
         data:
@@ -190,33 +190,33 @@ components:
           readOnly: true
           type: string
       type: object
-    MeasurementValues:
+    SeriesValues:
       additionalProperties: false
       properties:
         $schema:
           description: A URL to the JSON Schema for this object.
-          example: https://example.com/schemas/MeasurementValues.json
+          example: https://example.com/schemas/SeriesValues.json
           format: uri
           readOnly: true
           type: string
-        measurement:
-          $ref: "#/components/schemas/Measurement"
         page:
           format: int64
           type: integer
         pageSize:
           format: int64
           type: integer
+        series:
+          $ref: "#/components/schemas/Series"
         total:
           format: int64
           type: integer
         values:
           items:
-            $ref: "#/components/schemas/MeasurementValue"
+            $ref: "#/components/schemas/SeriesValue"
           nullable: true
           type: array
       required:
-        - measurement
+        - series
         - values
         - page
         - pageSize
@@ -378,23 +378,17 @@ paths:
           description: Error
       security:
         - apiKey: []
-  /application/{id}/measurement:
-    post:
-      operationId: addMeasurement
+  /application/{id}/online:
+    get:
+      operationId: isOnline
       parameters:
-        - description: Id of the application for which to add a new measurement.
+        - description: Id of the application to get.
           in: path
           name: id
           required: true
           schema:
-            description: Id of the application for which to add a new measurement.
+            description: Id of the application to get.
             type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Measurement"
-        required: true
       responses:
         "204":
           description: No Content
@@ -406,42 +400,9 @@ paths:
           description: Error
       security:
         - apiKey: []
-  /application/{id}/measurement/{name}:
+  /application/{id}/series:
     get:
-      operationId: getMeasurement
-      parameters:
-        - description: Id of the application for which to get the measurement.
-          in: path
-          name: id
-          required: true
-          schema:
-            description: Id of the application for which to get the measurement.
-            type: string
-        - description: Name of the measurement.
-          in: path
-          name: name
-          required: true
-          schema:
-            description: Name of the measurement.
-            type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Measurement"
-          description: OK
-        default:
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ErrorModel"
-          description: Error
-      security:
-        - apiKey: []
-  /application/{id}/measurements:
-    get:
-      operationId: listMeasurements
+      operationId: listSeries
       parameters:
         - description: Id of the application to get.
           in: path
@@ -456,7 +417,7 @@ paths:
             application/json:
               schema:
                 items:
-                  $ref: "#/components/schemas/Measurement"
+                  $ref: "#/components/schemas/Series"
                 nullable: true
                 type: array
           description: OK
@@ -468,9 +429,69 @@ paths:
           description: Error
       security:
         - apiKey: []
-  /application/{id}/measurements/{name}:
+    post:
+      operationId: addSeries
+      parameters:
+        - description: Id of the application for which to add a new series.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application for which to add a new series.
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Series"
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+  /application/{id}/series/{name}:
     get:
-      operationId: listMeasurementValues
+      operationId: getSeries
+      parameters:
+        - description: Id of the application for which to get the series.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the application for which to get the series.
+            type: string
+        - description: Name of the series.
+          in: path
+          name: name
+          required: true
+          schema:
+            description: Name of the series.
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - apiKey: []
+  /application/{id}/series/{name}/values:
+    get:
+      operationId: listSeriesValues
       parameters:
         - description: Id of the application to get.
           in: path
@@ -479,12 +500,12 @@ paths:
           schema:
             description: Id of the application to get.
             type: string
-        - description: Name of the measurement.
+        - description: Name of the series.
           in: path
           name: name
           required: true
           schema:
-            description: Name of the measurement.
+            description: Name of the series.
             type: string
         - description: Sort by.
           explode: false
@@ -533,7 +554,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeasurementValues"
+                $ref: "#/components/schemas/SeriesValues"
           description: OK
         default:
           content:

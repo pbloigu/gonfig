@@ -113,7 +113,7 @@ func (c controller) listSeries(ctx context.Context, input *struct {
 func (c controller) listSeriesValues(ctx context.Context, input *struct {
 	Id   string `path:"id" doc:"Id of the application to get."`
 	Name string `path:"name" doc:"Name of the series."`
-	Sort string `query:"sort" enum:"created,data" required:"false" doc:"Sort by." default:"created"`
+	Sort string `query:"sort" enum:"created,data, recorded" required:"false" doc:"Sort by." default:"created"`
 	Dir  string `query:"dir" enum:"asc,desc" required:"false" doc:"Sort direction." default:"desc"`
 	Page int    `query:"page" required:"false" doc:"Page number. 1-based, please." minimum:"1" default:"1"`
 	Size int    `query:"size" required:"false" maximum:"50" doc:"Page size." default:"10"`

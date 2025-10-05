@@ -82,7 +82,7 @@ func (f *frontend) Start() {
 
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}", "getApplication"), f.c.getApplication)
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/online", "isOnline"), f.c.isOnline)
-	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/series/{name}", "listSeriesValues"), f.c.listSeriesValues)
+	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/series/{name}/values", "listSeriesValues"), f.c.listSeriesValues)
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/series/{name}", "getSeries"), f.c.getSeries)
 	huma.Register(humaWrapper, def(http.MethodPost, "/application", "addApplication"), f.c.addApplication)
 	huma.Register(humaWrapper, def(http.MethodPatch, "/application/{id}", "updateApplication"), f.c.updateApplication)

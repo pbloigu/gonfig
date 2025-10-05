@@ -44,8 +44,8 @@ export type Application = {
     readonly id?: (string) & readonlyP;
     readonly ip?: (string) & readonlyP;
     readonly isOnline?: (boolean) & readonlyP;
-    readonly measurements?: (string[]) & readonlyP;
     name: string;
+    readonly series?: (string[]) & readonlyP;
 };
 export type Configuration = {
     readonly $schema?: (string) & readonlyP;
@@ -76,23 +76,23 @@ export type LoginResponse = {
     expiry: number;
     token: string;
 };
-export type Measurement = {
+export type Series = {
     readonly $schema?: (string) & readonlyP;
     readonly lastValue?: (string | null) & readonlyP;
     readonly lastValueTime?: (string | null) & readonlyP;
     name: string;
 };
-export type MeasurementValue = {
+export type SeriesValue = {
     data?: string | null;
     readonly time?: (string) & readonlyP;
 };
-export type MeasurementValues = {
+export type SeriesValues = {
     readonly $schema?: (string) & readonlyP;
-    measurement: Measurement;
     page: number;
     pageSize: number;
+    series: Series;
     total: number;
-    values: MeasurementValue[];
+    values: SeriesValue[];
 };
 export type StatusChangeTrigger = {
     readonly $schema?: (string) & readonlyP;

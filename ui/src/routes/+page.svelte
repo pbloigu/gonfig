@@ -1,89 +1,33 @@
 <script lang="ts">
-	import type { PageProps } from './$types';
-	import {
-		Table,
-		TableHead,
-		TableHeadCell,
-		TableBody,
-		TableBodyRow,
-		TableBodyCell,
-		Navbar,
-		NavBrand,
-		NavUl,
-		Button,
+	import { Button, Input, Label, P, Heading, Card } from 'flowbite-svelte';
+	import { Login } from '$lib/service';
+	let username: string = '';
+	let password: string = '';
 
-		NavLi,
-
-		Badge
-
-
-	} from 'flowbite-svelte';
-
-	import EditConfig from '$lib/components/EditConfig.svelte';
-	import AddApplication from '../lib/components/AddApplication.svelte';
-	import DeleteApplication from '$lib/components/DeleteApplication.svelte';
-	import { ListApplications, Logout } from '$lib/service';
-	import ViewMeasurements from '$lib/components/ViewMeasurements.svelte';
-	import Automation from '$lib/components/automation/Automation.svelte';
-
-	let { data }: PageProps = $props();
-
-	let tableItems = $state(data.apps);
-
-	let dataChanged = () => {
-		console.log('Data changed.');
-		ListApplications().then((value) => {
-			tableItems = value;
-		});
-	};
-
-	let logout = () => {
-		Logout();
-	};
+	function login(): void {
+		Login(username, password);
+	}
 </script>
 
-<Navbar>
-	<NavBrand>
-		<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white"
-			>Welcome to Gonfig</span
-		>
-	</NavBrand>
-	<NavUl class="order-1">
-		<NavLi>
-      <div class="flex items-center space-x-1 md:order-2">
-        <AddApplication {dataChanged}></AddApplication>
-        <Button color="red" onclick={logout}>Logout</Button>
-      </div>
-    </NavLi>
-	</NavUl>
-</Navbar>
-<Table id="hello">
-	<TableHead>
-		<TableHeadCell>Status</TableHeadCell>
-		<TableHeadCell>Id</TableHeadCell>
-		<TableHeadCell>Name</TableHeadCell>
-		<TableHeadCell>Measurements</TableHeadCell>
-		<TableHeadCell>Configuration</TableHeadCell>
-		<TableHeadCell>Automation</TableHeadCell>
-		<TableHeadCell>Delete</TableHeadCell>
-	</TableHead>
-	<TableBody>
-		{#each tableItems as ti}
-			<TableBodyRow>
-				<TableBodyCell>
-					{#if ti.isOnline}
-						<Badge color="green">ONLINE</Badge>
-					{:else}
-						<Badge color="red">OFFLINE</Badge>
-					{/if}
-				</TableBodyCell>
-				<TableBodyCell>{ti.id}</TableBodyCell>
-				<TableBodyCell>{ti.name}</TableBodyCell>
-				<TableBodyCell><ViewMeasurements app={ti}></ViewMeasurements></TableBodyCell>
-				<TableBodyCell><EditConfig app={ti}></EditConfig></TableBodyCell>
-				<TableBodyCell><Automation app={ti}></Automation></TableBodyCell>
-				<TableBodyCell><DeleteApplication app={ti} {dataChanged}></DeleteApplication></TableBodyCell>
-			</TableBodyRow>
-		{/each}
-	</TableBody>
-</Table>
+<div class="w-1/3 m-auto">
+	<Card class="p-4 sm:p-6 md:p-8">
+		<div>
+			<Heading tag="h1" class="mb-4 text-4xl font-extrabold  md:text-5xl lg:text-6xl">Login</Heading
+			>
+		</div>
+
+		<form class="flex flex-col space-y-6">
+			<div class="mb-6">
+				<Label for="username" class="mb-2 block">Username</Label>
+				<Input id="username" type="text" bind:value={username}></Input>
+			</div>
+			<div class="mb-6">
+				<Label for="password" class="mb-2 block">Password</Label>
+				<Input id="password" type="password" bind:value={password}></Input>
+			</div>
+			<div>
+				<Button color="secondary" onclick={login}>Login</Button>
+			</div>
+		</form>
+	</Card>
+</div>
