@@ -1,8 +1,6 @@
 package cc
 
 import (
-	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/gammazero/nexus/v3/client"
@@ -33,6 +31,7 @@ func (clr caller) onJoin(wEvent *wamp.Event) {
 	defer clr.lock.Unlock()
 	clr.sessions[session] = appId
 	clr.service.Joined(appId)
+	log.Debug().Any("id", session).Msg("Session established.")
 }
 
 func (clr caller) onLeave(wEvent *wamp.Event) {
@@ -45,15 +44,6 @@ func (clr caller) onLeave(wEvent *wamp.Event) {
 	appId := clr.sessions[session]
 	delete(clr.sessions, session)
 	clr.service.Left(appId)
-}
-
-func (clr caller) onRegister(wEvent *wamp.Event) {
-	args := wEvent.Arguments[1].(wamp.Dict)
-	invoke := args["invoke"]
-	match := args["match"]
-	uri := args["uri"].(wamp.URI)
-
-	fmt.Printf("\ninvoke: %s, match: %s, uri: %s\n", reflect.TypeOf(invoke), reflect.TypeOf(match), reflect.TypeOf(uri))
 }
 
 func newCaller(nxr router.Router, realm string, service service.Service) (caller, error) {
@@ -70,7 +60,6 @@ func newCaller(nxr router.Router, realm string, service service.Service) (caller
 
 		c.Subscribe(string(wamp.MetaEventSessionOnJoin), clr.onJoin, nil)
 		c.Subscribe(string(wamp.MetaEventSessionOnLeave), clr.onLeave, nil)
-		c.Subscribe(string(wamp.MetaEventRegOnCreate), clr.onRegister, nil)
 		return clr, nil
 	}
 }

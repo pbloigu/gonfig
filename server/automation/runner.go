@@ -7,6 +7,8 @@ import (
 	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/risor-io/risor"
+	"github.com/risor-io/risor/builtins"
+	"github.com/risor-io/risor/object"
 	"github.com/rs/zerolog/log"
 )
 
@@ -42,8 +44,8 @@ func (r r) runStatusChangeScript(appId string, script string, status Status) {
 	ctx := context.Background()
 	_, err := risor.Eval(ctx, script,
 		risor.WithoutDefaultGlobals(),
+		risor.WithGlobal("try", object.NewBuiltin("try", builtins.Try)),
 		risor.WithGlobal("data", data(r)),
-		risor.WithGlobal("util", util{}),
 		risor.WithGlobal("context", statusCtx{
 			ApplicationId: appId,
 			Status:        string(status),

@@ -129,14 +129,25 @@ func (r *r) Start() {
 	log.Info().Any("port", r.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started C&C router.")
 }
 
-func (r r) callIpc(appId string, ipc string) {
+func (r r) callIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
 
 	// XXX: currently callers are not purged if app is deleted
 	// TODO: need to pay attention to this later
 	if c, ok := r.callers[appId]; ok {
 		ctx := context.Background()
-		c.c.Call(ctx, ipc, nil, nil, nil, nil)
+		r, err := c.c.Call(ctx, ipc, nil, args, nil, nil)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if r != nil {
+			return r.Arguments, r.ArgumentsKw, nil
+		}
+
+		log.Debug().Any("result", r).Msg("Received result.")
 	}
+	return nil, nil, nil
 }
 
 func (r r) selectNetwork() string {

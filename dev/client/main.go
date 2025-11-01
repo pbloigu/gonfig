@@ -14,8 +14,13 @@ import (
 )
 
 func hello(ctx context.Context, i *wamp.Invocation) nexus.InvokeResult {
-	fmt.Println("HELLO")
-	return nexus.InvokeResult{}
+	name := i.Arguments[0].(string)
+	fmt.Printf("HELLO %s\n", name)
+	fmt.Println("Hello. Check out my enemies int the reply.")
+	return nexus.InvokeResult{
+		Args:   []any{"Yoda", "Luke", "Obi-Wan"},
+		Kwargs: map[string]any{"My enemies": "See the list"},
+	}
 }
 
 func main() {

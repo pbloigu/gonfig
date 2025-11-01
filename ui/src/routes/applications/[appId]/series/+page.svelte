@@ -1,14 +1,19 @@
 <script lang="ts">
-	import { Button, Card, Heading, Label, Navbar, NavBrand, P, Select, Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell } from 'flowbite-svelte';
+	import { Button, Card, Heading, Label, Navbar, NavBrand, P, Select, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell } from 'flowbite-svelte';
 	import type { PageProps } from './$types';
 	import { ListSeriesValues } from '$lib/service';
-	import type { SeriesValues } from '$lib/client/definitions';
+	import type { SeriesValue, SeriesValues } from '$lib/client/definitions';
 	import AddSeries from '$lib/components/AddSeries.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { Table, type DataTable, type TableItemType } from "@flowbite-svelte-plugins/datatable";
 	
 
 	let { data }: PageProps = $props();
 	let selectedSeries: string | undefined = $state();
+	let tableInstance: DataTable | null = $state(null);
+
+	
+
 	let tableData: SeriesValues = $state({
 		page:1,
 		total:0,
@@ -18,11 +23,23 @@
 		},
 		values: []
 	})
+	
+	let values: TableItemType[] = $state([])
 
 	$effect(() => {
 		if (selectedSeries) {
 			ListSeriesValues(selectedSeries, data.appId, 1).then((val: SeriesValues) => {
 				tableData = val
+				
+				val.values.forEach((v) => {
+					console.log(v.data + "  "+v.time)
+					values.push({
+						Value: v.data||"",
+						Date: v.time||""
+					})
+				})
+				tableInstance?.destroy()
+				tableInstance?.init()
 			});
 		}
 	});
@@ -34,7 +51,7 @@
 
 <Navbar class="bg-primary-50 dark:bg-secondary-300">
 	<NavBrand>
-		<Heading tag="h6">{data.app.id}</Heading>
+		<Heading tag="h6">{data.app.name}</Heading>
 	</NavBrand>
 	<div class="flex md:order-1">
 		<Select
@@ -49,8 +66,8 @@
 		<AddSeries app={data.app} seriesAdded={seriesAdded}></AddSeries>
 	</div>
 </Navbar>
-<Table>
-	<TableHead>
+<Table items={values} bind:dataTableInstance={tableInstance}/>
+	<!-- <TableHead>
 		<TableHeadCell>Time</TableHeadCell>
 		<TableHeadCell>Value</TableHeadCell>
 	</TableHead>
@@ -61,6 +78,6 @@
 				<TableBodyCell>{v.data}</TableBodyCell>
 			</TableBodyRow>
 		{/each}
-	</TableBody>
-</Table>
+	</TableBody> -->
+<!-- </Table> -->
 

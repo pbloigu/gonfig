@@ -46,8 +46,8 @@ type Service interface {
 	Left(appId string)
 	IsOnline(appId string) bool
 	Cached() Cached
-	RegisterIpcCallback(callback func(appId string, ipc string))
-	CallIpc(appId string, ipc string)
+	RegisterIpcCallback(callback func(appId string, ipc string, args []any) ([]any, map[string]any, error))
+	CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error)
 }
 
 type s struct {
@@ -55,7 +55,7 @@ type s struct {
 	c           configurations.Configurations
 	online      map[string]time.Time
 	onlineLock  sync.RWMutex
-	ipcCallback func(appId string, ipc string)
+	ipcCallback func(appId string, ipc string, args []any) ([]any, map[string]any, error)
 }
 
 type c struct {
@@ -112,12 +112,12 @@ func (s *s) Cached() Cached {
 	}
 }
 
-func (s *s) RegisterIpcCallback(callback func(appId string, ipc string)) {
+func (s *s) RegisterIpcCallback(callback func(appId string, ipc string, args []any) ([]any, map[string]any, error)) {
 	s.ipcCallback = callback
 }
 
-func (s *s) CallIpc(appId string, ipc string) {
-	s.ipcCallback(appId, ipc)
+func (s *s) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
+	return s.ipcCallback(appId, ipc, args)
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {

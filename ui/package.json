@@ -17,6 +17,7 @@
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
 		"@eslint/js": "^9.36.0",
+		"@flowbite-svelte-plugins/datatable": "^0.4.1",
 		"@monaco-editor/loader": "^1.5.0",
 		"@sveltejs/adapter-static": "^3.0.9",
 		"@sveltejs/kit": "^2.43.5",
