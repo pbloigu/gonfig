@@ -41,7 +41,7 @@
 <form>
 	<P>
 		<!-- svelte-ignore binding_property_non_reactive -->
-		<Textarea id="editor" rows={8} bind:value={config}>
+		<Textarea id="editor" style="height: 30em;" bind:value={config}>
 			{#snippet header()}
 				<Toolbar embedded>
 					<ToolbarGroup>

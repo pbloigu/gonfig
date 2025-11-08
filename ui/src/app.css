@@ -34,7 +34,7 @@
 
 .code-editor {
 		width: 100%;
-		height: 10em;
+		height: 16em;
 		padding: 0;
 		border-radius: 50px;
 }
@@ -67,4 +67,8 @@
 
 .action-buttons {
   padding-top: 1em;
+}
+
+.accordion-open {
+  height: 27em;
 }

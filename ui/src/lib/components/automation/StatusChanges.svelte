@@ -77,7 +77,7 @@
 	{#if statusTrigger.actions != null && statusTrigger.actions.length > 0}
 		<Accordion>
 			{#each statusTrigger.actions as a, idx}
-				<AccordionItem>
+				<AccordionItem classes={{content: "accordion-open"}}>
 					{#snippet header()}{statusTrigger.actions?.[idx]?.name}{/snippet}
 					<P>
 						<Label for="act-name-{idx}">Name</Label>
