@@ -57,8 +57,14 @@
 .datatable-wrapper .datatable-table tbody tr.selected {
   background-color: #fff1ee !important;
 }
-.datatable-wrapper {
+
+
+.gonfig-content {
   padding-left: 1em;
   padding-right: 1em;
+  margin-top: 1em;
 }
 
+.action-buttons {
+  padding-top: 1em;
+}

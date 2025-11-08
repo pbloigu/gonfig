@@ -90,6 +90,6 @@
 		<AddSeries app={data.app} {seriesAdded}></AddSeries>
 	</div>
 </Navbar>
-<div class="relative overflow-x-auto" style="margin-top:1em;">
+<div class="relative overflow-x-auto gonfig-content">
 	<table bind:this={tableElement}></table>
 </div>

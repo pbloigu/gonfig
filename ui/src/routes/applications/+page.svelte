@@ -17,10 +17,9 @@
 		Heading
 	} from 'flowbite-svelte';
 
-	import EditConfig from '$lib/components/EditConfig.svelte';
+	
 	import DeleteApplication from '$lib/components/DeleteApplication.svelte';
 	import { ListApplications } from '$lib/service';
-	import Automation from '$lib/components/automation/Automation.svelte';
 	import AddApplication from '$lib/components/AddApplication.svelte';
 
 	let { data }: PageProps = $props();
@@ -66,11 +65,9 @@
 					{/if}
 				</TableBodyCell>
 				<TableBodyCell>{ti.id}</TableBodyCell>
-				<TableBodyCell>{ti.name}</TableBodyCell>
-				<!-- <TableBodyCell><ViewSeries app={ti}></ViewSeries></TableBodyCell> -->
+				<TableBodyCell>{ti.name}</TableBodyCell>				
 				<TableBodyCell><A href="/applications/{ti.id}/series">Time series</A></TableBodyCell>
-				<TableBodyCell><A href="/applications/{ti.id}/configuration">Configuration</A></TableBodyCell>
-				<!-- <TableBodyCell><Automation app={ti}></Automation></TableBodyCell> -->
+				<TableBodyCell><A href="/applications/{ti.id}/configuration">Configuration</A></TableBodyCell>				
 				 <TableBodyCell><A href="/applications/{ti.id}/automation">Automation</A></TableBodyCell>
 				<TableBodyCell><DeleteApplication app={ti} {dataChanged}></DeleteApplication></TableBodyCell>
 			</TableBodyRow>

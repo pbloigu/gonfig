@@ -63,7 +63,7 @@
 					{/snippet}
 				</Textarea>
 			</P>
-			<P>
+			<P class="action-buttons">
 				<Button color="secondary" onclick={saveApplication}>Save</Button>
 			</P>
 		</form>

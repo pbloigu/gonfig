@@ -37,6 +37,7 @@
 		<Heading tag="h6">{data.app.name}</Heading>
 	</NavBrand>
 </Navbar>
+<div class="gonfig-content">
 <form>
 	<P>
 		<!-- svelte-ignore binding_property_non_reactive -->
@@ -50,7 +51,8 @@
 			{/snippet}
 		</Textarea>
 	</P>
-	<P>
+	<P class="action-buttons">
 		<Button color="secondary" onclick={saveConfig}>Save</Button>
 	</P>
 </form>
+</div>

@@ -38,7 +38,7 @@
 			<Input id="app-name" type="text" bind:value={seriesName}></Input>
 		</P>
 	</form>
-	<P>
+	<P class="action-buttons">
 		<Button disabled={!seriesName} color="secondary" onclick={addSeries}>Save</Button>
 	</P>
 </Modal>

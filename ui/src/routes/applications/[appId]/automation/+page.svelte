@@ -10,4 +10,6 @@
 		<Heading tag="h6">{data.app.name}</Heading>
 	</NavBrand>
 </Navbar>
-<StatusChanges appId={data.app.id}></StatusChanges>
+<div class="gonfig-content">
+	<StatusChanges appId={data.app.id}></StatusChanges>
+</div>

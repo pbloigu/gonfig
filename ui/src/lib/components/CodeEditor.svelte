@@ -3,7 +3,7 @@
 		tag: 'code-editor',
 		shadow: 'none',
 		props: {
-			app: { reflect: true, type: 'Object' }
+			app: { reflect: true, type: 'Object' }			
 		}
 	}}
 />
@@ -23,8 +23,9 @@
 	interface Props {
 		value: string;
 		language?: string;
+		id: string
 	}
-	let { value = $bindable(), language = ''}: Props = $props();
+	let { value = $bindable(), language = '', id }: Props = $props();
 
 	function getTheme(): string {
 		return localStorage.getItem('THEME_PREFERENCE_KEY') == 'dark' ? 'vs-dark' : 'vs'
@@ -88,4 +89,4 @@
 	});
 </script>
 
-<div class="code-editor" bind:this={editorContainer}></div>
+<div id="{id}" class="code-editor" bind:this={editorContainer}></div>

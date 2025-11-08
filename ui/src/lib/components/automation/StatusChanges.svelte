@@ -9,7 +9,7 @@
 />
 
 <script lang="ts">
-	import { Accordion, AccordionItem, Button, Input, Label, P, TabItem } from "flowbite-svelte";
+	import { Accordion, AccordionItem, Button, Input, Label, P, Alert } from "flowbite-svelte";
 	import CodeEditor from "../CodeEditor.svelte";
 	import { AddStatusChangeTrigger, DeleteStatusChangeTrigger, GetStatusChangeTrigger, UpdateStatusChangeTrigger } from "$lib/service";
 	import { onMount } from "svelte";
@@ -85,20 +85,23 @@
 						></Input>
 					</P>
 					<P>
-						<Label>Script</Label>
-						<CodeEditor bind:value={statusTrigger.actions[idx].script} language="risor"
+						<Label for="editor">Script</Label>
+						<CodeEditor id="editor" bind:value={statusTrigger.actions[idx].script} language="risor"
 						></CodeEditor>
 					</P>
-					<P>
+					<P class="action-buttons">
 						<Button onclick={() => deleteAction(idx)}>Delete action</Button>
 					</P>
 				</AccordionItem>
 			{/each}
 		</Accordion>
 	{:else}
-		No actions defined.
+		<Alert>
+			<span class="font-medium">No actions defined!</span>
+  			Add actions below.
+		</Alert>
 	{/if}
-	<P>
+	<P class="action-buttons">
 		<Button color="secondary" onclick={addStatusAction}>Add action</Button>
         <Button color="secondary" onclick={saveChanges}>Save changes</Button>
 		<Button onclick={deleteTrigger} hidden={isNew}>Delete trigger</Button>
