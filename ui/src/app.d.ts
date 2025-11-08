@@ -20,10 +20,6 @@ declare module "simple-datatables" {
 
   export type { DataTableOptions, DataTableConfiguration, ColumnOption, cellType, inputCellType, dataRowType, inputRowType, headerCellType, inputHeaderCellType, TableDataType, DataOption, renderType, nodeType, elementNodeType, textNodeType, cellDataType } from "simple-datatables/dist/dts/datatable";
 
-  export interface SelectableDataRow {
-    selected?: boolean;
-    [key: string]: any;
-  }
 }
 
 export {};

@@ -32,6 +32,9 @@ importers:
       pnpm:
         specifier: ^10.17.1
         version: 10.17.1
+      simple-datatables:
+        specifier: ^10.2.0
+        version: 10.2.0
       tailwindcss:
         specifier: ^4.1.13
         version: 4.1.13
@@ -42,9 +45,6 @@ importers:
       '@eslint/js':
         specifier: ^9.36.0
         version: 9.36.0
-      '@flowbite-svelte-plugins/datatable':
-        specifier: ^0.4.1
-        version: 0.4.1(svelte@5.39.6)(tailwindcss@4.1.13)
       '@monaco-editor/loader':
         specifier: ^1.5.0
         version: 1.5.0
@@ -324,12 +324,6 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
-
-  '@flowbite-svelte-plugins/datatable@0.4.1':
-    resolution: {integrity: sha512-LUZlLxbE/HJPj5Hd82Crgs6sR3Yvm5PP/7iaLYCQzBU61PW/iDXg85AKTq7sKeSAflHtY4kVPJuTt5vuI8W5fg==}
-    peerDependencies:
-      svelte: ^5.0.0
-      tailwindcss: ^4.1.4
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -892,8 +886,8 @@ packages:
     engines: {node: '>=4'}
     hasBin: true
 
-  dayjs@1.11.18:
-    resolution: {integrity: sha512-zFBQ7WFRvVRhKcWoUh+ZA1g2HVgUbsZm9sbddh8EC5iv93sui8DVVz1Npvz+r6meo9VKfa8NyLWBsQK1VvIKPA==}
+  dayjs@1.11.19:
+    resolution: {integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -2018,12 +2012,6 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@flowbite-svelte-plugins/datatable@0.4.1(svelte@5.39.6)(tailwindcss@4.1.13)':
-    dependencies:
-      simple-datatables: 10.2.0
-      svelte: 5.39.6
-      tailwindcss: 4.1.13
-
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -2562,7 +2550,7 @@ snapshots:
 
   cssesc@3.0.0: {}
 
-  dayjs@1.11.18: {}
+  dayjs@1.11.19: {}
 
   debug@4.4.3:
     dependencies:
@@ -3242,7 +3230,7 @@ snapshots:
 
   simple-datatables@10.2.0:
     dependencies:
-      dayjs: 1.11.18
+      dayjs: 1.11.19
       diff-dom: 5.2.1
 
   sirv@3.0.2:

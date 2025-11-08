@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-
+@plugin 'flowbite/plugin';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -28,6 +28,7 @@
   --color-secondary-900: #0c4a6e;
 }
 
+@source "../node_modules/simple-datatables/dist";
 @source "../node_modules/flowbite-svelte/dist";
 @source "../node_modules/flowbite-svelte-icons/dist";
 
@@ -42,8 +43,6 @@
   cursor: pointer;
 }
 
-@source "../node_modules/simple-datatables/dist";
-@source "../node_modules/@flowbite-svelte-plugins/datatable/dist";
 
 .datatable-pagination .datatable-active a,
 .datatable-pagination .datatable-active a:focus,
@@ -58,3 +57,8 @@
 .datatable-wrapper .datatable-table tbody tr.selected {
   background-color: #fff1ee !important;
 }
+.datatable-wrapper {
+  padding-left: 1em;
+  padding-right: 1em;
+}
+
