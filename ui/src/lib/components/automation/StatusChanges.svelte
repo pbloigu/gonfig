@@ -3,43 +3,48 @@
 		tag: 'status-changes-button',
 		shadow: 'none',
 		props: {
-            appId: {type: 'String'}
+			appId: { type: 'String' }
 		}
 	}}
 />
 
 <script lang="ts">
-	import { Accordion, AccordionItem, Button, Input, Label, P, Alert } from "flowbite-svelte";
-	import CodeEditor from "../CodeEditor.svelte";
-	import { AddStatusChangeTrigger, DeleteStatusChangeTrigger, GetStatusChangeTrigger, UpdateStatusChangeTrigger } from "$lib/service";
-	import { onMount } from "svelte";
-	import type { StatusChangeTrigger } from "$lib/client/definitions";
-    let {appId} = $props()
-    let isNew: boolean = $state(true);
+	import { Accordion, AccordionItem, Button, Input, Label, P, Alert, TabItem } from 'flowbite-svelte';
+	import CodeEditor from '../CodeEditor.svelte';
+	import {
+		AddStatusChangeTrigger,
+		DeleteStatusChangeTrigger,
+		GetStatusChangeTrigger,
+		UpdateStatusChangeTrigger
+	} from '$lib/service';
+	import { onMount } from 'svelte';
+	import type { StatusChangeTrigger } from '$lib/client/definitions';
+	let { appId } = $props();
+	let isNew: boolean = $state(true);
 	let statusTrigger: StatusChangeTrigger = $state({
 		actions: []
-	})
+	});
 
 	onMount(() => {
-		GetStatusChangeTrigger(appId).then((result)  => {
-			if(result) {
-				statusTrigger = result
-				isNew = false
+		GetStatusChangeTrigger(appId).then((result) => {
+			if (result) {
+				statusTrigger = result;
+				isNew = false;
 			}
-		})
-	})
+		});
+	});
 
-    const addStatusAction = () => {
+	const addStatusAction = () => {
 		statusTrigger.actions = [
-			...(statusTrigger.actions || []),
 			{
 				name: '',
 				script: ''
-			}
+			},
+			...(statusTrigger.actions || [])
 		];
 	};
 
-    const saveChanges = () => {
+	const saveChanges = () => {
 		if (isNew) {
 			AddStatusChangeTrigger(appId, statusTrigger).then((value) => {
 				statusTrigger = value;
@@ -50,14 +55,14 @@
 		}
 	};
 
-    const deleteAction = (idx: number) => {
+	const deleteAction = (idx: number) => {
 		// ugh 3 lines to remove an item from an array...
 		var tmp = $state.snapshot(statusTrigger.actions);
 		tmp?.splice(idx, 1);
 		statusTrigger.actions = tmp;
 	};
 
-    const deleteTrigger = () => {
+	const deleteTrigger = () => {
 		DeleteStatusChangeTrigger(appId).then(() => {
 			statusTrigger = {
 				actions: [
@@ -70,14 +75,13 @@
 			isNew = true;
 		});
 	};
-
 </script>
 
-
+<TabItem open title="Status changes">
 	{#if statusTrigger.actions != null && statusTrigger.actions.length > 0}
 		<Accordion>
 			{#each statusTrigger.actions as a, idx}
-				<AccordionItem classes={{content: "accordion-open"}}>
+				<AccordionItem classes={{ content: 'accordion-open' }} open={idx == 0}>
 					{#snippet header()}{statusTrigger.actions?.[idx]?.name}{/snippet}
 					<P>
 						<Label for="act-name-{idx}">Name</Label>
@@ -98,12 +102,12 @@
 	{:else}
 		<Alert>
 			<span class="font-medium">No actions defined!</span>
-  			Add actions below.
+			Add actions below.
 		</Alert>
 	{/if}
 	<P class="action-buttons">
 		<Button color="secondary" onclick={addStatusAction}>Add action</Button>
-        <Button color="secondary" onclick={saveChanges}>Save changes</Button>
+		<Button color="secondary" onclick={saveChanges}>Save changes</Button>
 		<Button onclick={deleteTrigger} hidden={isNew}>Delete trigger</Button>
 	</P>
-
+</TabItem>
