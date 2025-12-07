@@ -3,7 +3,7 @@ package configurations
 import "sync"
 
 type actionCache struct {
-	c map[string][]Action
+	c map[any][]Action
 	m *sync.RWMutex
 }
 
@@ -12,7 +12,21 @@ type appCache struct {
 	m *sync.RWMutex
 }
 
-func (ac *actionCache) put(key string, value []Action) {
+func newActionCache() actionCache {
+	return actionCache{
+		c: make(map[any][]Action),
+		m: &sync.RWMutex{},
+	}
+}
+
+func newAppCache() appCache {
+	return appCache{
+		c: map[string]bool{},
+		m: &sync.RWMutex{},
+	}
+}
+
+func (ac *actionCache) put(key any, value []Action) {
 	ac.m.Lock()
 	defer ac.m.Unlock()
 	ac.c[key] = value

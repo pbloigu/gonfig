@@ -18,7 +18,7 @@ type Configuration struct {
 
 type CronTrigger struct {
 	Id             int
-	Name           string
+	Description    string
 	CronExpression string
 	Actions        []Action
 }
