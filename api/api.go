@@ -48,7 +48,7 @@ type LoginResponse struct {
 }
 
 type CronTrigger struct {
-	Name           string   `json:"name" required:"true" readOnly:"false"`
+	Description    string   `json:"description" required:"true" readOnly:"false"`
 	CronExpression string   `json:"cronExpression" required:"true" readOnly:"false"`
 	Actions        []Action `json:"actions" required:"false" readOnly:"false"`
 }
@@ -63,6 +63,6 @@ type StatusChangeTrigger struct {
 }
 
 type Action struct {
-	Name   string `json:"name" required:"true" readOnly:"false"`
-	Script string `json:"script" required:"true" readOnly:"false"`
+	Description string `json:"description" required:"true" readOnly:"false"`
+	Script      string `json:"script" required:"true" readOnly:"false"`
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/cc"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
@@ -14,6 +15,7 @@ type data struct {
 
 type ipc struct {
 	s service.Service
+	r cc.Router
 }
 
 type statusCtx struct {
@@ -65,7 +67,7 @@ func (l logging) Debug(msg any) {
 }
 
 func (i ipc) Call(appId string, proc string, args []any) (ipcResult, error) {
-	list, named, err := i.s.CallIpc(appId, proc, args)
+	list, named, err := i.r.CallIpc(appId, proc, args)
 	if err != nil {
 		log.Debug().AnErr("error", err).Msg("IPC call failed.")
 		return ipcResult{}, errors.New(err.Error())

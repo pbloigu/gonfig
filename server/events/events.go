@@ -26,3 +26,11 @@ type ApplicationOffline struct {
 func (ao ApplicationOffline) Type() uint32 {
 	return 3
 }
+
+type Cron struct {
+	Actions []api.Action
+}
+
+func (c Cron) Type() uint32 {
+	return 4
+}

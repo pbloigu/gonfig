@@ -3,12 +3,12 @@ components:
     Action:
       additionalProperties: false
       properties:
-        name:
+        description:
           type: string
         script:
           type: string
       required:
-        - name
+        - description
         - script
       type: object
     Application:
@@ -517,6 +517,7 @@ paths:
             enum:
               - created
               - data
+              - " recorded"
             type: string
         - description: Sort direction.
           explode: false

@@ -19,12 +19,12 @@ func TestListSeriesTriggers(t *testing.T) {
 		SeriesName: "Measurement1",
 		Actions: []Action{
 			{
-				Name:   "Action1",
-				Script: "Script1",
+				Description: "Action1",
+				Script:      "Script1",
 			},
 			{
-				Name:   "Action2",
-				Script: "Script2",
+				Description: "Action2",
+				Script:      "Script2",
 			},
 		},
 	}
@@ -32,12 +32,12 @@ func TestListSeriesTriggers(t *testing.T) {
 		SeriesName: "Measurement2",
 		Actions: []Action{
 			{
-				Name:   "Action3",
-				Script: "Script1",
+				Description: "Action3",
+				Script:      "Script1",
 			},
 			{
-				Name:   "Action4",
-				Script: "Script2",
+				Description: "Action4",
+				Script:      "Script2",
 			},
 		},
 	}
@@ -67,12 +67,12 @@ func TestListStatusChangeTriggers(t *testing.T) {
 	st1 := StatusChangeTrigger{
 		Actions: []Action{
 			{
-				Name:   "Action1",
-				Script: "Script1",
+				Description: "Action1",
+				Script:      "Script1",
 			},
 			{
-				Name:   "Action2",
-				Script: "Script2",
+				Description: "Action2",
+				Script:      "Script2",
 			},
 		},
 	}
@@ -97,12 +97,12 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 	st1 := StatusChangeTrigger{
 		Actions: []Action{
 			{
-				Name:   "Action1",
-				Script: "Script1",
+				Description: "Action1",
+				Script:      "Script1",
 			},
 			{
-				Name:   "Action2",
-				Script: "Script2",
+				Description: "Action2",
+				Script:      "Script2",
 			},
 		},
 	}
@@ -116,28 +116,28 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 	st2 := StatusChangeTrigger{
 		Actions: []Action{
 			{
-				Name:   "Action3",
-				Script: "Script3",
+				Description: "Action3",
+				Script:      "Script3",
 			},
 			{
-				Name:   "Action4",
-				Script: "Script4",
+				Description: "Action4",
+				Script:      "Script4",
 			},
 		},
 	}
 	repo.UpdateStatusChangeTrigger("appid1", st2)
 	tr = repo.GetStatusChangeTrigger("appid1")
 	assert.Len(t, tr.Actions, 2)
-	assert.Equal(t, "Action3", tr.Actions[0].Name)
-	assert.Equal(t, "Action4", tr.Actions[1].Name)
+	assert.Equal(t, "Action3", tr.Actions[0].Description)
+	assert.Equal(t, "Action4", tr.Actions[1].Description)
 	assert.Equal(t, "Script3", tr.Actions[0].Script)
 	assert.Equal(t, "Script4", tr.Actions[1].Script)
 
 	cached := repo.(*c).statusActions.get("appid1")
 	assert.Len(t, cached, 2)
 
-	assert.Equal(t, "Action3", cached[0].Name)
-	assert.Equal(t, "Action4", cached[1].Name)
+	assert.Equal(t, "Action3", cached[0].Description)
+	assert.Equal(t, "Action4", cached[1].Description)
 	assert.Equal(t, "Script3", cached[0].Script)
 	assert.Equal(t, "Script4", cached[1].Script)
 

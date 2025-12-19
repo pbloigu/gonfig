@@ -48,7 +48,7 @@ func New(p Params) Server {
 func (s *server) Start() {
 
 	s.s = service.New(s.p.SeriesDb, s.p.DbLoc)
-	s.r = automation.New(s.s)
+	s.r = automation.New(s.s, s.c)
 	s.startApis()
 }
 
@@ -87,7 +87,7 @@ func (s *server) startApis() {
 	}()
 
 	go func() {
-		s.c = cc.NewRouter(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
+		s.c = cc.New(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
 		s.c.Start()
 		c <- true
 	}()

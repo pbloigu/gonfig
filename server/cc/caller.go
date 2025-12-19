@@ -6,6 +6,8 @@ import (
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/kelindar/event"
+	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
@@ -30,6 +32,7 @@ func (clr caller) onJoin(wEvent *wamp.Event) {
 	clr.lock.Lock()
 	defer clr.lock.Unlock()
 	clr.sessions[session] = appId
+	event.Emit(events.ApplicationOnline{AppId: appId})
 	clr.service.Joined(appId)
 	log.Debug().Any("id", session).Msg("Session established.")
 }
@@ -43,6 +46,7 @@ func (clr caller) onLeave(wEvent *wamp.Event) {
 	defer clr.lock.Unlock()
 	appId := clr.sessions[session]
 	delete(clr.sessions, session)
+	event.Emit(events.ApplicationOffline{AppId: appId})
 	clr.service.Left(appId)
 }
 

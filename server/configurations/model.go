@@ -35,6 +35,6 @@ type StatusChangeTrigger struct {
 }
 
 type Action struct {
-	Name   string
-	Script string
+	Description string
+	Script      string
 }

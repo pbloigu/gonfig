@@ -41,6 +41,7 @@ type Configurations interface {
 	GetCronTrigger(id int) CronTrigger
 	DeleteCronTrigger(id int)
 	UpdateCronTrigger(cr CronTrigger)
+	ListCronTriggers() []CronTrigger
 }
 
 type c struct {

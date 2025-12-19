@@ -37,7 +37,7 @@
 	const addStatusAction = () => {
 		statusTrigger.actions = [
 			{
-				name: '',
+				description: '',
 				script: ''
 			},
 			...(statusTrigger.actions || [])
@@ -67,7 +67,7 @@
 			statusTrigger = {
 				actions: [
 					{
-						name: '',
+						description: '',
 						script: ''
 					}
 				]
@@ -82,10 +82,10 @@
 		<Accordion>
 			{#each statusTrigger.actions as a, idx}
 				<AccordionItem classes={{ content: 'accordion-open' }} open={idx == 0}>
-					{#snippet header()}{statusTrigger.actions?.[idx]?.name}{/snippet}
+					{#snippet header()}{statusTrigger.actions?.[idx]?.description}{/snippet}
 					<P>
 						<Label for="act-name-{idx}">Name</Label>
-						<Input id="act-name-{idx}" type="text" bind:value={statusTrigger.actions[idx].name}
+						<Input id="act-name-{idx}" type="text" bind:value={statusTrigger.actions[idx].description}
 						></Input>
 					</P>
 					<P>

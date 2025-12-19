@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS SeriesTrigger (
 
 CREATE TABLE IF NOT EXISTS CronTrigger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name string UNIQUE NOT NULL,
-    expression string NOT NULL
+    description string NOT NULL,
+    expression string UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS StatusTrigger (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS StatusTrigger (
 );
 
 CREATE TABLE IF NOT EXISTS Action (
-    name string UNIQUE NOT NULL,
+    description string NOT NULL,
     script string,
     series_trigger_id integer,
     cron_trigger_id integer,
@@ -49,8 +49,6 @@ CREATE TABLE IF NOT EXISTS Action (
     FOREIGN KEY(cron_trigger_id) REFERENCES CronTrigger(id),
     FOREIGN KEY(status_change_trigger_id) REFERENCES StatusTrigger(id)
 );
-
-
 
 
 INSERT INTO User (login, password) VALUES ('admin', 'password') ON CONFLICT DO NOTHING;

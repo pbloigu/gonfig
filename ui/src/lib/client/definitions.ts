@@ -33,7 +33,7 @@ export type WithoutWriteonly<T> = T extends any ?
         : never
     } : never;
 export type Action = {
-    name: string;
+    description: string;
     script: string;
 };
 export type Application = {

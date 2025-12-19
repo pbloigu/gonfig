@@ -42,9 +42,9 @@ func (c *c) UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger) {
 
 		for _, a := range t.Actions {
 			_, err := dba.Exec(`
-                INSERT INTO Action (name, script, status_change_trigger_id)
+                INSERT INTO Action (description, script, status_change_trigger_id)
                 VALUES (?, ?, ?)    
-            `, a.Name, a.Script, sId)
+            `, a.Description, a.Script, sId)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
@@ -56,7 +56,7 @@ func (c *c) UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger) {
 		return nil, nil
 	})
 	if err != nil {
-		log.Panic().AnErr("error", err).Msg("Could not list update trigger..")
+		log.Panic().AnErr("error", err).Msg("Could not update trigger..")
 	}
 }
 
@@ -73,9 +73,9 @@ func (c *c) UpdateCronTrigger(cr CronTrigger) {
 
 		for _, a := range cr.Actions {
 			_, err := dba.Exec(`
-                INSERT INTO Action (name, script, cron_trigger_id)
+                INSERT INTO Action (description, script, cron_trigger_id)
                 VALUES (?, ?, ?)    
-            `, a.Name, a.Script, cr.Id)
+            `, a.Description, a.Script, cr.Id)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
@@ -163,6 +163,58 @@ func (c *c) GetCronTrigger(id int) CronTrigger {
 	return cr.(CronTrigger)
 }
 
+func (c *c) ListCronTriggers() []CronTrigger {
+	res, err := c.db.Context().Query(`
+		SELECT 
+			ct.id,
+			ct.description,
+			ct.expression,
+			a.description,
+			a.script
+		FROM CronTrigger ct
+		INNER JOIN Action a on a.cron_trigger_id = ct.id`)
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Could not list cron triggers.")
+	}
+	defer res.Close()
+	cts := make(map[int]CronTrigger, 0)
+	type row struct {
+		id     int
+		descr  string
+		expr   string
+		adescr string
+		script string
+	}
+	for res.Next() {
+		r := row{}
+		res.Scan(&r.id, &r.descr, &r.expr, &r.adescr, &r.script)
+		if ct, ok := cts[r.id]; ok {
+			ct.Actions = append(ct.Actions, Action{
+				Description: r.adescr,
+				Script:      r.script,
+			})
+		} else {
+			ct = CronTrigger{
+				Id:          r.id,
+				Description: r.descr,
+				Actions:     make([]Action, 0),
+			}
+			ct.Actions = append(ct.Actions, Action{
+				Description: r.adescr,
+				Script:      r.script,
+			})
+			cts[r.id] = ct
+		}
+	}
+
+	result := make([]CronTrigger, 0)
+	for _, ct := range cts {
+		result = append(result, ct)
+	}
+	return result
+
+}
+
 func (c *c) ListSeriesTriggers(appId string) []SeriesTrigger {
 	ms, err := c.db.DoInTransaction(func(dba database.Context) (any, error) {
 		ms := make([]SeriesTrigger, 0)
@@ -235,9 +287,9 @@ func (c *c) PersistCronTrigger(cr CronTrigger) CronTrigger {
 
 		for _, a := range cr.Actions {
 			_, err := dba.Exec(`
-                INSERT INTO Action (name, script, cron_trigger_id)
+                INSERT INTO Action (description, script, cron_trigger_id)
                 VALUES (?, ?, ?)
-            `, a.Name, a.Script, crId)
+            `, a.Description, a.Script, crId)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
@@ -286,9 +338,9 @@ func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) Sta
 
 		for _, a := range st.Actions {
 			_, err := dba.Exec(`
-                INSERT INTO Action (name, script, status_change_trigger_id)
+                INSERT INTO Action (description, script, status_change_trigger_id)
                 VALUES (?, ?, ?)
-            `, a.Name, a.Script, stId)
+            `, a.Description, a.Script, stId)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
@@ -336,9 +388,9 @@ func (c *c) PersistSeriesTrigger(appId string, st SeriesTrigger) {
 		}
 		for _, a := range st.Actions {
 			_, err := dba.Exec(`
-                INSERT INTO Action (name, script, series_trigger_id)
+                INSERT INTO Action (description, script, series_trigger_id)
                 VALUES (?, ?, ?)
-            `, a.Name, a.Script, mtId)
+            `, a.Description, a.Script, mtId)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
@@ -400,6 +452,7 @@ func (c *c) DeleteCronTrigger(id int) {
 			log.Error().AnErr("error", err).Msg("Deleting cron trigger failed.")
 			return nil, err
 		}
+		// c.cronActions.remove()
 		return nil, nil
 	})
 	if err != nil {
@@ -448,8 +501,16 @@ func (c *c) populateTriggerCaches() {
 		waiter <- true
 	}()
 
-	<-waiter
-	<-waiter
+	go func() {
+		for _, ct := range c.ListCronTriggers() {
+			c.cronActions.put(ct.CronExpression, ct.Actions)
+		}
+		waiter <- true
+	}()
+
+	for range 3 {
+		<-waiter
+	}
 }
 
 func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) {
@@ -482,11 +543,11 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 
 	r, err := dba.Query(fmt.Sprintf(`
 		SELECT
-			name,
+			description,
 			script
 		FROM Action
 		WHERE %s = ?
-		ORDER BY name ASC
+		ORDER BY description ASC
 	`, column), id)
 
 	if err != nil {
@@ -496,7 +557,7 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 	defer r.Close()
 	for r.Next() {
 		a := Action{}
-		err = r.Scan(&a.Name, &a.Script)
+		err = r.Scan(&a.Description, &a.Script)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Could not list actions.")
 			return nil, err

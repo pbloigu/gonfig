@@ -25,6 +25,7 @@ type Config struct {
 type Router interface {
 	Start()
 	Stop(time.Duration)
+	CallIpc(string, string, []any) ([]any, map[string]any, error)
 }
 
 type r struct {
@@ -35,13 +36,12 @@ type r struct {
 	callers map[string]caller
 }
 
-func NewRouter(c Config, s service.Service) Router {
+func New(c Config, s service.Service) Router {
 	r := &r{
 		config:  c,
 		service: s,
 		callers: make(map[string]caller, 0),
 	}
-	s.RegisterIpcCallback(r.callIpc)
 	return r
 }
 func (r *r) Stop(timeout time.Duration) {
@@ -129,7 +129,7 @@ func (r *r) Start() {
 	log.Info().Any("port", r.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started C&C router.")
 }
 
-func (r r) callIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
+func (r r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
 
 	// XXX: currently callers are not purged if app is deleted
 	// TODO: need to pay attention to this later

@@ -16,38 +16,49 @@ import (
 
 type Cached interface {
 	ListApplicationIds() []string
-	GetStatusChangeActions(appId string) []api.Action
+	ListStatusChangeActions(appId string) []api.Action
 }
 
 // Service interface with all public functions in this file
 type Service interface {
+	// Utility
 	NewPagination(size int, defaultSize int, page int) Pargination
 	NewSort(sort string, defaultSort string, dir string) Sort
 
+	// Application
 	UpdateApplication(application api.Application) api.Application
 	AddApplication(application api.Application) api.Application
 	GetApplication(id string) api.Application
 	ListApplications() []api.Application
 	DeleteApplication(id string)
+	// Configuration
 	AddConfiguration(appId string, configuration api.Configuration)
+	GetConfiguration(appId string) api.Configuration
+
+	// Series
 	AddSeries(appId string, series api.Series)
 	InitSeries(appId string, series api.Series)
-	GetConfiguration(appId string) api.Configuration
 	GetSeries(appId string, seriesName string) api.Series
 	ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues
 	ListSeries(appId string) []api.Series
+
+	// Authentication
 	IsAllowed(appId string, apiKey string) bool
 	Login(login string, password string) bool
+
+	// Status change triggers
 	AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
 	DeleteStatusChangeTrigger(appId string)
 	UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger
 	GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger
+
+	// Cron triggers
+	ListCronTriggers() []api.CronTrigger
+
 	Joined(appId string)
 	Left(appId string)
 	IsOnline(appId string) bool
 	Cached() Cached
-	RegisterIpcCallback(callback func(appId string, ipc string, args []any) ([]any, map[string]any, error))
-	CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error)
 }
 
 type s struct {
@@ -83,13 +94,13 @@ func (c *c) ListApplicationIds() []string {
 	return c.s.c.ListApplicationIds()
 }
 
-func (c *c) GetStatusChangeActions(appId string) []api.Action {
+func (c *c) ListStatusChangeActions(appId string) []api.Action {
 	apiActions := make([]api.Action, 0)
 	modelActions := c.s.c.GetStatusChangeActions(appId)
 	for _, a := range modelActions {
 		apiActions = append(apiActions, api.Action{
-			Name:   a.Name,
-			Script: a.Script,
+			Description: a.Description,
+			Script:      a.Script,
 		})
 	}
 	return apiActions
@@ -110,14 +121,6 @@ func (s *s) Cached() Cached {
 	return &c{
 		s: s,
 	}
-}
-
-func (s *s) RegisterIpcCallback(callback func(appId string, ipc string, args []any) ([]any, map[string]any, error)) {
-	s.ipcCallback = callback
-}
-
-func (s *s) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
-	return s.ipcCallback(appId, ipc, args)
 }
 
 func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
@@ -171,14 +174,12 @@ func (s *s) Joined(appId string) {
 	s.onlineLock.Lock()
 	defer s.onlineLock.Unlock()
 	s.online[appId] = time.Now()
-	event.Emit(events.ApplicationOnline{AppId: appId})
 }
 
 func (s *s) Left(appId string) {
 	s.onlineLock.Lock()
 	defer s.onlineLock.Unlock()
 	delete(s.online, appId)
-	event.Emit(events.ApplicationOffline{AppId: appId})
 }
 
 func (s *s) UpdateApplication(application api.Application) api.Application {
@@ -293,6 +294,27 @@ func timePtr(unixTs *int) *time.Time {
 	}
 }
 
+func (s *s) ListCronTriggers() []api.CronTrigger {
+	r := make([]api.CronTrigger, 0)
+	for _, ct := range s.c.ListCronTriggers() {
+		r = append(r, api.CronTrigger{
+			Description:    ct.Description,
+			CronExpression: ct.CronExpression,
+			Actions: func() []api.Action {
+				acts := make([]api.Action, 0)
+				for _, a := range ct.Actions {
+					acts = append(acts, api.Action{
+						Description: a.Description,
+						Script:      a.Script,
+					})
+				}
+				return acts
+			}(),
+		})
+	}
+	return r
+}
+
 func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues {
 	m := s.serDb.GetSeries(appId, seriesName)
 	if m != (series.Series{}) {
@@ -348,8 +370,8 @@ func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger
 			actions := make([]configurations.Action, 0)
 			for _, a := range trigger.Actions {
 				actions = append(actions, configurations.Action{
-					Name:   a.Name,
-					Script: a.Script,
+					Description: a.Description,
+					Script:      a.Script,
 				})
 			}
 			return actions
@@ -370,8 +392,8 @@ func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrig
 			actions := make([]configurations.Action, 0)
 			for _, a := range trigger.Actions {
 				actions = append(actions, configurations.Action{
-					Name:   a.Name,
-					Script: a.Script,
+					Description: a.Description,
+					Script:      a.Script,
 				})
 			}
 			return actions
@@ -383,8 +405,8 @@ func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrig
 			acts := make([]api.Action, 0)
 			for _, a := range tr.Actions {
 				acts = append(acts, api.Action{
-					Name:   a.Name,
-					Script: a.Script,
+					Description: a.Description,
+					Script:      a.Script,
 				})
 			}
 			return acts
@@ -402,8 +424,8 @@ func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
 				acts := make([]api.Action, 0)
 				for _, a := range tr.Actions {
 					acts = append(acts, api.Action{
-						Name:   a.Name,
-						Script: a.Script,
+						Description: a.Description,
+						Script:      a.Script,
 					})
 				}
 				return acts

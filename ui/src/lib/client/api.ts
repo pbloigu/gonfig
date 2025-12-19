@@ -89,7 +89,7 @@ export default class {
     private listSeriesValues(params: {
         'id': string,
         'name': string,
-        'sort': "created" | "data",
+        'sort': "created" | "data" | " recorded",
         'dir': "asc" | "desc",
         'page': number,
         'size': number

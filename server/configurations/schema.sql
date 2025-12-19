@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS SeriesTrigger (
 
 CREATE TABLE IF NOT EXISTS CronTrigger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name string NOT NULL,
+    description string NOT NULL,
     expression string UNIQUE NOT NULL
 );
 
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS StatusTrigger (
 );
 
 CREATE TABLE IF NOT EXISTS Action (
-    name string NOT NULL,
+    description string NOT NULL,
     script string,
     series_trigger_id integer,
     cron_trigger_id integer,
