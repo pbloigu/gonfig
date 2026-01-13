@@ -1,10 +1,16 @@
 <script lang="ts">
 	import { DarkMode } from "flowbite-svelte";
     import '../app.css';
-    let { children } = $props();
-
+	import Navigation from "$lib/components/Navigation.svelte";
+	import { token } from "$lib/service";
+	
+	let { children } = $props();
 </script>
+
 <DarkMode />
 <div class="min-w-full">
-    {@render children()}
+    {#if token.current.value}
+        <Navigation />
+    {/if}
+	{@render children()}
 </div>

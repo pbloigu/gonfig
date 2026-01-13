@@ -1,6 +1,9 @@
 package api
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Configuration struct {
 	Data string    `json:"data"`
@@ -47,22 +50,38 @@ type LoginResponse struct {
 	Expiry int    `json:"expiry" doc:"Token exipry in seconds."`
 }
 
+type CronValidationRequest struct {
+	Minute string `json:"minute" required:"true"`
+	Hour   string `json:"hour" required:"true"`
+	Dom    string `json:"dayOfMonth" required:"true"`
+	Month  string `json:"month" required:"true"`
+	Dow    string `json:"dayOfWeek" required:"true"`
+}
+
+func (r CronValidationRequest) String() string {
+	return fmt.Sprintf("%s %s %s %s %s", r.Minute, r.Hour, r.Dom, r.Minute, r.Dow)
+}
+
 type CronTrigger struct {
+	Id             int      `json:"id" required:"true" readOnly:"true"`
 	Description    string   `json:"description" required:"true" readOnly:"false"`
 	CronExpression string   `json:"cronExpression" required:"true" readOnly:"false"`
 	Actions        []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type SeriesTrigger struct {
+	Id         int      `json:"id" required:"true" readOnly:"true"`
 	SeriesName string   `json:"seriesName" required:"true" readOnly:"false"`
 	Actions    []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type StatusChangeTrigger struct {
+	Id      int      `json:"id" required:"true" readOnly:"true"`
 	Actions []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type Action struct {
+	Id          int    `json:"id" required:"true" readOnly:"true"`
 	Description string `json:"description" required:"true" readOnly:"false"`
 	Script      string `json:"script" required:"true" readOnly:"false"`
 }

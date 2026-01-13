@@ -1,7 +1,8 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import Api from "./client/api"
-import { type Application, type LoginResponse, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
+import { type Application, type CronValidationRequest, type LoginResponse, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
 import { goto } from "$app/navigation";
+import { PersistentState } from '@friendofsvelte/state';
 const { MODE, VITE_API_URL } = import.meta.env;
 
 
@@ -10,6 +11,12 @@ export interface Error {
     message?: string
 }
 
+interface Token {
+    value: string | null
+}
+export const token = new PersistentState<Token>("token", {
+    value: null
+}, "sessionStorage")
 
 var baseUrl: string | undefined = undefined
 
@@ -27,7 +34,7 @@ const getApi = function (): Api {
         baseURL: resolveBaseUri()
     });
     a.axios.interceptors.request.use((r) => {
-        r.headers.set("Authorization", "Bearer " + localStorage.getItem("apiKey"))
+        r.headers.set("Authorization", "Bearer " + token.current.value)
         return r
     })
 
@@ -36,7 +43,8 @@ const getApi = function (): Api {
 
 const defaultErrorHandler = async function (error: AxiosError) {
     if(error.response?.status == 401) {
-        await goto("/")
+        token.current.value = null
+        await goto("/login")
     } else {
         await goto("/error", {
             state: {
@@ -59,8 +67,9 @@ const notFoundErrorHandler = async function (error: AxiosError) {
 
 export const Logout = async function () {
     const response: AxiosResponse<any, any> = await getApi().Default.logout(
-        { Authorization: localStorage.getItem("apiKey") || "" }, {})
+        { Authorization: token.current.value || "" }, {})
     return Promise.resolve(response.data).then((l: any) => {
+        token.current.value = null
         goto("/")
     })
 }
@@ -69,7 +78,7 @@ export const Login = async function name(username: string, password: string) {
     const response: AxiosResponse<any, any> = await getApi().Default.login({}, { username: username, password: password })
         .catch((error: AxiosError) => defaultErrorHandler(error))
     Promise.resolve(response.data).then((l: LoginResponse) => {
-        localStorage.setItem("apiKey", l.token)
+        token.current.value = l.token
         goto("/applications")
     })
 }
@@ -158,4 +167,17 @@ export const DeleteStatusChangeTrigger = async function (appId: string) {
     const response = await getApi().Default.deleteStatusChangeTrigger({ id: appId })
         .catch((error: AxiosError) => defaultErrorHandler(error))
     return Promise.resolve(response.data)
+}
+
+export const IsValid = async function (cronExpression: CronValidationRequest): Promise<boolean> {
+    const response = await getApi().Default.isValid({},cronExpression, {})
+        .catch((error: AxiosError) => {
+            if (error.response?.status == 400) {
+                return Promise.resolve(false)
+            }else {
+                defaultErrorHandler(error)
+            }
+        })
+    
+    return !response ? Promise.resolve(false) :  Promise.resolve(true)
 }

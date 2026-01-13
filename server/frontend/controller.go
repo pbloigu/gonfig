@@ -46,18 +46,49 @@ type controller struct {
 	srv service.Service
 }
 
+func (c controller) litsCronTriggers(ctx context.Context, input *struct{}) (*struct{ Body []api.CronTrigger }, error) {
+	return &struct{ Body []api.CronTrigger }{Body: c.srv.ListCronTriggers()}, nil
+}
+
+func (c controller) addCronTrigger(ctx context.Context, input *struct {
+	Body api.CronTrigger
+}) (*struct{ Body api.CronTrigger }, error) {
+	trigger := c.srv.AddCronTrigger(input.Body)
+	return &struct{ Body api.CronTrigger }{Body: trigger}, nil
+}
+
+func (c controller) isValid(ctx context.Context, input *struct {
+	Body api.CronValidationRequest `doc:"Cron expression to validate."`
+}) (*struct{}, error) {
+	if !c.srv.IsValid(input.Body) {
+		return nil, huma.Error400BadRequest("Cron expression is not valid.")
+	} else {
+		return nil, nil
+	}
+}
+
+func (c controller) updateCronTrigger(ctx context.Context, input *struct {
+	Id   int `path:"id" doc:"Id of the cron trigger to update."`
+	Body api.CronTrigger
+}) (*struct{ Body api.CronTrigger }, error) {
+	trigger := c.srv.GetCronTrigger(input.Id)
+	if trigger == nil {
+		return nil, huma.Error404NotFound("No such trigger.")
+	} else {
+		return &struct{ Body api.CronTrigger }{Body: *trigger}, nil
+	}
+}
+
 func (c controller) getStatusChangeTrigger(ctx context.Context, input *struct {
-	Id string `path:"id" doc:"Id of the application to get."`
+	Id string `path:"id" doc:"Id of the application for which to get the status change trigger."`
 }) (*struct{ Body api.StatusChangeTrigger }, error) {
 	trigger := c.srv.GetStatusChangeTrigger(input.Id)
 
 	if trigger == nil {
 		return nil, huma.Error404NotFound("No such trigger.")
 	} else {
-		response := &struct{ Body api.StatusChangeTrigger }{Body: *trigger}
-		return response, nil
+		return &struct{ Body api.StatusChangeTrigger }{Body: *trigger}, nil
 	}
-
 }
 
 func (c controller) addStatusChangeTrigger(ctx context.Context, input *struct {
@@ -72,6 +103,13 @@ func (c controller) deleteStatusChangeTrigger(ctx context.Context, input *struct
 	Id string `path:"id" doc:"Id of the application to get."`
 }) (*struct{}, error) {
 	c.srv.DeleteStatusChangeTrigger(input.Id)
+	return &struct{}{}, nil
+}
+
+func (c controller) deleteCronTrigger(ctx context.Context, input *struct {
+	Id int `path:"id" doc:"Id of the cron trigger to delete."`
+}) (*struct{}, error) {
+	c.srv.DeleteCronTrigger(input.Id)
 	return &struct{}{}, nil
 }
 

@@ -38,6 +38,7 @@
 		"vite": "^7.2.4"
 	},
 	"dependencies": {
+		"@friendofsvelte/state": "0.0.6-ts",
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/postcss": "^4.1.17",
 		"@tailwindcss/typography": "^0.5.19",

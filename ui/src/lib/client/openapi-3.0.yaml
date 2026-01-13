@@ -5,9 +5,14 @@ components:
       properties:
         description:
           type: string
+        id:
+          format: int64
+          readOnly: true
+          type: integer
         script:
           type: string
       required:
+        - id
         - description
         - script
       type: object
@@ -65,6 +70,59 @@ components:
           type: string
       required:
         - data
+      type: object
+    CronTrigger:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          example: https://example.com/schemas/CronTrigger.json
+          format: uri
+          readOnly: true
+          type: string
+        actions:
+          items:
+            $ref: "#/components/schemas/Action"
+          nullable: true
+          type: array
+        cronExpression:
+          type: string
+        description:
+          type: string
+        id:
+          format: int64
+          readOnly: true
+          type: integer
+      required:
+        - id
+        - description
+        - cronExpression
+      type: object
+    CronValidationRequest:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          example: https://example.com/schemas/CronValidationRequest.json
+          format: uri
+          readOnly: true
+          type: string
+        dayOfMonth:
+          type: string
+        dayOfWeek:
+          type: string
+        hour:
+          type: string
+        minute:
+          type: string
+        month:
+          type: string
+      required:
+        - minute
+        - hour
+        - dayOfMonth
+        - month
+        - dayOfWeek
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -236,9 +294,15 @@ components:
             $ref: "#/components/schemas/Action"
           nullable: true
           type: array
+        id:
+          format: int64
+          readOnly: true
+          type: integer
+      required:
+        - id
       type: object
   securitySchemes:
-    apiKey:
+    token:
       scheme: Bearer
       type: http
 info:
@@ -269,7 +333,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}:
     delete:
       operationId: deleteApplication
@@ -291,7 +355,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     get:
       operationId: getApplication
       parameters:
@@ -316,7 +380,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     patch:
       operationId: updateApplication
       parameters:
@@ -348,7 +412,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/configuration:
     post:
       operationId: addConfiguration
@@ -377,7 +441,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/online:
     get:
       operationId: isOnline
@@ -399,7 +463,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/series:
     get:
       operationId: listSeries
@@ -428,7 +492,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     post:
       operationId: addSeries
       parameters:
@@ -455,7 +519,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/series/{name}:
     get:
       operationId: getSeries
@@ -488,7 +552,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/series/{name}/values:
     get:
       operationId: listSeriesValues
@@ -564,7 +628,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /application/{id}/trigger/status:
     delete:
       operationId: deleteStatusChangeTrigger
@@ -586,16 +650,16 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     get:
       operationId: getStatusChangeTrigger
       parameters:
-        - description: Id of the application to get.
+        - description: Id of the application for which to get the status change trigger.
           in: path
           name: id
           required: true
           schema:
-            description: Id of the application to get.
+            description: Id of the application for which to get the status change trigger.
             type: string
       responses:
         "200":
@@ -611,7 +675,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     post:
       operationId: addStatusChangeTrigger
       parameters:
@@ -642,7 +706,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
     put:
       operationId: updateStatusChangeTrigger
       parameters:
@@ -673,7 +737,7 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
   /applications:
     get:
       operationId: listApplications
@@ -694,7 +758,128 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []
+  /cron:
+    post:
+      operationId: addCronTrigger
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronTrigger"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronTrigger"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - token: []
+  /cron/expression:
+    post:
+      operationId: isValid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronValidationRequest"
+              description: Cron expression to validate.
+        required: true
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - token: []
+  /cron/{id}:
+    delete:
+      operationId: deleteCronTrigger
+      parameters:
+        - description: Id of the cron trigger to delete.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the cron trigger to delete.
+            format: int64
+            type: integer
+      responses:
+        "204":
+          description: No Content
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - token: []
+    put:
+      operationId: updateCronTrigger
+      parameters:
+        - description: Id of the cron trigger to update.
+          in: path
+          name: id
+          required: true
+          schema:
+            description: Id of the cron trigger to update.
+            format: int64
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CronTrigger"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CronTrigger"
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - token: []
+  /crons:
+    get:
+      operationId: listCronTriggers
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/CronTrigger"
+                nullable: true
+                type: array
+          description: OK
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+      security:
+        - token: []
   /login:
     post:
       operationId: login
@@ -737,4 +922,4 @@ paths:
                 $ref: "#/components/schemas/ErrorModel"
           description: Error
       security:
-        - apiKey: []
+        - token: []

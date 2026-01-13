@@ -50,8 +50,20 @@ func TestListSeriesTriggers(t *testing.T) {
 	for _, mt := range mts {
 		assert.Len(t, mt.Actions, 2)
 	}
-	assert.Len(t, repo.(*c).seriesActions.get("appid1|Measurement1"), 2)
-	assert.Len(t, repo.(*c).seriesActions.get("appid1|Measurement2"), 2)
+	assert.Len(t, func() []Action {
+		if st, ok := repo.(*c).seriesTriggers.Get("appid1:Measurement1"); ok {
+			return st.(SeriesTrigger).Actions
+		} else {
+			return []Action{}
+		}
+	}(), 2)
+	assert.Len(t, func() []Action {
+		if st, ok := repo.(*c).seriesTriggers.Get("appid1:Measurement2"); ok {
+			return st.(SeriesTrigger).Actions
+		} else {
+			return []Action{}
+		}
+	}(), 2)
 
 }
 
@@ -81,7 +93,13 @@ func TestListStatusChangeTriggers(t *testing.T) {
 
 	tr := repo.GetStatusChangeTrigger("appid1")
 	assert.Len(t, tr.Actions, 2)
-	assert.Len(t, repo.(*c).statusActions.get("appid1"), 2)
+	assert.Len(t, func() []Action {
+		if st, ok := repo.(*c).statusTriggers.Get("appid1"); ok {
+			return st.(StatusChangeTrigger).Actions
+		} else {
+			return []Action{}
+		}
+	}(), 2)
 
 }
 
@@ -108,7 +126,13 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 	}
 
 	repo.PersistStatusChangeTrigger("appid1", st1)
-	assert.Len(t, repo.(*c).statusActions.get("appid1"), 2)
+	assert.Len(t, func() []Action {
+		if st, ok := repo.(*c).statusTriggers.Get("appid1"); ok {
+			return st.(StatusChangeTrigger).Actions
+		} else {
+			return []Action{}
+		}
+	}(), 2)
 
 	tr := repo.GetStatusChangeTrigger("appid1")
 	assert.Len(t, tr.Actions, 2)
@@ -133,7 +157,13 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 	assert.Equal(t, "Script3", tr.Actions[0].Script)
 	assert.Equal(t, "Script4", tr.Actions[1].Script)
 
-	cached := repo.(*c).statusActions.get("appid1")
+	var cached []Action
+	if st, ok := repo.(*c).statusTriggers.Get("appid1"); ok {
+		cached = st.(StatusChangeTrigger).Actions
+	} else {
+		cached = []Action{}
+	}
+
 	assert.Len(t, cached, 2)
 
 	assert.Equal(t, "Action3", cached[0].Description)

@@ -3,6 +3,7 @@ package configurations
 import (
 	_ "embed"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/pbloigu/gonfig/server/database"
 	"github.com/rs/zerolog/log"
 	_ "modernc.org/sqlite"
@@ -45,11 +46,10 @@ type Configurations interface {
 }
 
 type c struct {
-	db            database.Database
-	statusActions actionCache
-	cronActions   actionCache
-	seriesActions actionCache
-	apps          appCache
+	db             database.Database
+	statusTriggers *cache.Cache
+	seriesTriggers *cache.Cache
+	apps           *cache.Cache
 }
 
 //go:embed schema.sql
@@ -58,11 +58,10 @@ var ddl string
 // New constructs a Configurations backed by the database at dbLoc.
 func New(dbLoc string) Configurations {
 	c := &c{
-		db:            startDatabase(dbLoc),
-		statusActions: newActionCache(),
-		cronActions:   newActionCache(),
-		seriesActions: newActionCache(),
-		apps:          newAppCache(),
+		db:             startDatabase(dbLoc),
+		statusTriggers: cache.New(0, 0),
+		seriesTriggers: cache.New(0, 0),
+		apps:           cache.New(0, 0),
 	}
 	c.populateTriggerCaches()
 
@@ -82,7 +81,7 @@ func (c *c) DeleteApplication(id string) {
 			log.Error().AnErr("error", err).Msg("Could not delete application.")
 			return nil, err
 		}
-		c.apps.remove(id)
+		c.apps.Delete(id)
 		return nil, nil
 	})
 	if err != nil {
@@ -202,7 +201,7 @@ func (c *c) PersistApplication(a Application) Application {
 				return nil, err
 			}
 		}
-		c.apps.put(a.Id, true)
+		c.apps.Add(a.Id, true, 0)
 		return nil, nil
 	})
 	if err != nil {
@@ -257,7 +256,11 @@ func (c *c) UpdateApplication(a Application) {
 }
 
 func (c *c) ListApplicationIds() []string {
-	return c.apps.values()
+	ret := make([]string, 0)
+	for k, _ := range c.apps.Items() {
+		ret = append(ret, k)
+	}
+	return ret
 }
 
 func startDatabase(dbLoc string) database.Database {

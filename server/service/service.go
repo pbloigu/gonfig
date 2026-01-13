@@ -10,7 +10,9 @@ import (
 	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/events"
+	"github.com/pbloigu/gonfig/server/scheduler"
 	"github.com/pbloigu/gonfig/server/series"
+	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -53,7 +55,12 @@ type Service interface {
 	GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger
 
 	// Cron triggers
+	GetCronTrigger(id int) *api.CronTrigger
+	AddCronTrigger(trigger api.CronTrigger) api.CronTrigger
 	ListCronTriggers() []api.CronTrigger
+	DeleteCronTrigger(id int)
+	UpdateCronTrigger(trigger api.CronTrigger) api.CronTrigger
+	IsValid(request api.CronValidationRequest) bool
 
 	Joined(appId string)
 	Left(appId string)
@@ -62,11 +69,11 @@ type Service interface {
 }
 
 type s struct {
-	serDb       series.SeriesDb
-	c           configurations.Configurations
-	online      map[string]time.Time
-	onlineLock  sync.RWMutex
-	ipcCallback func(appId string, ipc string, args []any) ([]any, map[string]any, error)
+	serDb      series.SeriesDb
+	c          configurations.Configurations
+	online     map[string]time.Time
+	onlineLock sync.RWMutex
+	sched      scheduler.Scheduler
 }
 
 type c struct {
@@ -113,8 +120,23 @@ func New(seriesDb string, dbLoc string) Service {
 		c:          c,
 		online:     make(map[string]time.Time),
 		onlineLock: sync.RWMutex{},
+		sched:      scheduler.New(),
 	}
+	s.registerCronTriggers()
 	return s
+}
+
+func (s *s) IsValid(request api.CronValidationRequest) bool {
+	_, err := cron.ParseStandard(request.String())
+	return err == nil
+}
+
+func (s *s) registerCronTriggers() {
+	tr := s.ListCronTriggers()
+	for _, t := range tr {
+		s.sched.RegisterCronTrigger(t)
+	}
+	log.Info().Any("triggers", len(tr)).Msg("Cron triggers registered.")
 }
 
 func (s *s) Cached() Cached {
@@ -315,6 +337,75 @@ func (s *s) ListCronTriggers() []api.CronTrigger {
 	return r
 }
 
+func (s *s) AddCronTrigger(trigger api.CronTrigger) api.CronTrigger {
+	tr := s.c.PersistCronTrigger(configurations.CronTrigger{
+		Description:    trigger.Description,
+		CronExpression: trigger.CronExpression,
+		Actions: func() []configurations.Action {
+			actions := make([]configurations.Action, 0)
+			for _, a := range trigger.Actions {
+				actions = append(actions, configurations.Action{
+					Description: a.Description,
+					Script:      a.Script,
+				})
+			}
+			return actions
+		}(),
+	})
+
+	apiTr := api.CronTrigger{
+		Id:             tr.Id,
+		Description:    tr.Description,
+		CronExpression: tr.CronExpression,
+		Actions: func() []api.Action {
+			actions := make([]api.Action, 0)
+			for _, a := range tr.Actions {
+				actions = append(actions, api.Action{
+					Description: a.Description,
+					Script:      a.Script,
+				})
+			}
+			return actions
+		}(),
+	}
+	s.sched.RegisterCronTrigger(apiTr)
+	return apiTr
+}
+
+func (s *s) DeleteCronTrigger(id int) {
+	s.c.DeleteCronTrigger(id)
+	s.sched.DeregisterCronTrigger(id)
+}
+
+func (s *s) UpdateCronTrigger(trigger api.CronTrigger) api.CronTrigger {
+	s.c.UpdateCronTrigger(configurations.CronTrigger{
+		Id:             trigger.Id,
+		Description:    trigger.Description,
+		CronExpression: trigger.CronExpression,
+		Actions: func() []configurations.Action {
+			return nil
+		}(),
+	})
+	s.sched.DeregisterCronTrigger(trigger.Id)
+	s.sched.RegisterCronTrigger(trigger)
+	tr := s.c.GetCronTrigger(trigger.Id)
+	return api.CronTrigger{
+		Id:          tr.Id,
+		Description: tr.CronExpression,
+		Actions: func() []api.Action {
+			acts := make([]api.Action, 0)
+			for _, a := range tr.Actions {
+				acts = append(acts, api.Action{
+					Description: a.Description,
+					Script:      a.Script,
+				})
+			}
+			return acts
+		}(),
+	}
+
+}
+
 func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues {
 	m := s.serDb.GetSeries(appId, seriesName)
 	if m != (series.Series{}) {
@@ -411,6 +502,29 @@ func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrig
 			}
 			return acts
 		}(),
+	}
+}
+
+func (s *s) GetCronTrigger(id int) *api.CronTrigger {
+	tr := s.c.GetCronTrigger(id)
+	if tr.Id == 0 {
+		return nil
+	} else {
+		return &api.CronTrigger{
+			Id:             tr.Id,
+			Description:    tr.Description,
+			CronExpression: tr.CronExpression,
+			Actions: func() []api.Action {
+				acts := make([]api.Action, 0)
+				for _, a := range tr.Actions {
+					acts = append(acts, api.Action{
+						Script:      a.Script,
+						Description: a.Description,
+					})
+				}
+				return acts
+			}(),
+		}
 	}
 }
 

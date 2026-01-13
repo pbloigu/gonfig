@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS SeriesTrigger (
 CREATE TABLE IF NOT EXISTS CronTrigger (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     description string NOT NULL,
-    expression string UNIQUE NOT NULL
+    expression string NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS StatusTrigger (

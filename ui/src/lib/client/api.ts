@@ -2,7 +2,7 @@
 /* eslint-disable */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
-import type { Application, Configuration, Series, SeriesValues, StatusChangeTrigger, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
+import type { Application, Configuration, Series, SeriesValues, StatusChangeTrigger, CronTrigger, CronValidationRequest, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
 
 export * from "./definitions";
 
@@ -144,6 +144,40 @@ export default class {
         );
     }
 
+    private addCronTrigger(params: Record<string, never>, data: WithoutReadonly<CronTrigger>, options?: AxiosRequestConfig) {
+        return this.axios.post<WithoutWriteonly<CronTrigger>>(
+            "/cron", data, options
+        );
+    }
+
+    private isValid(params: Record<string, never>, data: WithoutReadonly<CronValidationRequest>, options?: AxiosRequestConfig) {
+        return this.axios.post(
+            "/cron/expression", data, options
+        );
+    }
+
+    private updateCronTrigger(params: {
+        'id': number
+    }, data: WithoutReadonly<CronTrigger>, options?: AxiosRequestConfig) {
+        return this.axios.put<WithoutWriteonly<CronTrigger>>(
+            "/cron/{id}".replace(/{id}/, String(params["id"])), data, options
+        );
+    }
+
+    private deleteCronTrigger(params: {
+        'id': number
+    }, options?: AxiosRequestConfig) {
+        return this.axios.delete(
+            "/cron/{id}".replace(/{id}/, String(params["id"])), options
+        );
+    }
+
+    private listCronTriggers(params: Record<string, never>, options?: AxiosRequestConfig) {
+        return this.axios.get<WithoutWriteonly<CronTrigger>[]>(
+            "/crons", options
+        );
+    }
+
     private login(params: Record<string, never>, data: WithoutReadonly<LoginRequest>, options?: AxiosRequestConfig) {
         return this.axios.post<WithoutWriteonly<LoginResponse>>(
             "/login", data, options
@@ -182,6 +216,11 @@ export default class {
             updateStatusChangeTrigger: this.updateStatusChangeTrigger.bind(this),
             deleteStatusChangeTrigger: this.deleteStatusChangeTrigger.bind(this),
             listApplications: this.listApplications.bind(this),
+            addCronTrigger: this.addCronTrigger.bind(this),
+            isValid: this.isValid.bind(this),
+            updateCronTrigger: this.updateCronTrigger.bind(this),
+            deleteCronTrigger: this.deleteCronTrigger.bind(this),
+            listCronTriggers: this.listCronTriggers.bind(this),
             login: this.login.bind(this),
             logout: this.logout.bind(this)
         };

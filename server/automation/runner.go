@@ -3,7 +3,6 @@ package automation
 import (
 	"context"
 
-	"github.com/go-co-op/gocron/v2"
 	"github.com/kelindar/event"
 	"github.com/pbloigu/gonfig/server/cc"
 	"github.com/pbloigu/gonfig/server/events"
@@ -18,9 +17,8 @@ type Runner interface {
 }
 
 type runner struct {
-	s  service.Service
-	r  cc.Router
-	sc gocron.Scheduler
+	s service.Service
+	r cc.Router
 }
 
 func New(s service.Service, r cc.Router) Runner {
@@ -28,34 +26,9 @@ func New(s service.Service, r cc.Router) Runner {
 		s: s,
 		r: r,
 	}
-	runner.initScheduler()
-	runner.registerJobs()
+
 	runner.registerEventListeners()
-	runner.sc.Start()
 	return runner
-}
-
-func (r *runner) initScheduler() {
-	sc, err := gocron.NewScheduler()
-	if err != nil {
-		log.Panic().AnErr("error", err).Msg("Unable to create task scheduler.")
-	}
-	r.sc = sc
-}
-
-func (r runner) registerJobs() {
-	for _, ct := range r.s.ListCronTriggers() {
-		jd := gocron.CronJob(ct.CronExpression, false)
-		task := gocron.NewTask(func() {
-			event.Emit(events.Cron{
-				Actions: ct.Actions,
-			})
-		})
-		_, err := r.sc.NewJob(jd, task)
-		if err != nil {
-			log.Panic().AnErr("error", err).Msg("Failed to register cron job.")
-		}
-	}
 }
 
 func (r runner) registerEventListeners() {

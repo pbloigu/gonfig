@@ -51,7 +51,7 @@ func (c *c) UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger) {
 			}
 		}
 
-		c.statusActions.put(appId, t.Actions)
+		c.statusTriggers.Replace(appId, t, 0)
 
 		return nil, nil
 	})
@@ -81,8 +81,17 @@ func (c *c) UpdateCronTrigger(cr CronTrigger) {
 				return nil, err
 			}
 		}
+		_, err = dba.Exec(`
+			UPDATE CronTrigger
+			SET description = ?
+				expression = ?
+			WHERE id = ?
+		`, cr.Description, cr.CronExpression, cr.Id)
 
-		c.cronActions.put(cr.Id, cr.Actions)
+		if err != nil {
+			log.Error().AnErr("error", err).Msg("Could not update cron trigger.")
+			return nil, err
+		}
 
 		return nil, nil
 	})
@@ -92,7 +101,11 @@ func (c *c) UpdateCronTrigger(cr CronTrigger) {
 }
 
 func (c *c) GetStatusChangeActions(appId string) []Action {
-	return c.statusActions.get(appId)
+	if res, ok := c.statusTriggers.Get(appId); ok {
+		return res.([]Action)
+	} else {
+		return []Action{}
+	}
 }
 
 func (c *c) GetStatusChangeTrigger(appId string) StatusChangeTrigger {
@@ -295,7 +308,6 @@ func (c *c) PersistCronTrigger(cr CronTrigger) CronTrigger {
 				return nil, err
 			}
 		}
-		c.cronActions.put(cr.CronExpression, cr.Actions)
 		return crId, nil
 	})
 	if err != nil {
@@ -346,7 +358,7 @@ func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) Sta
 				return nil, err
 			}
 		}
-		c.statusActions.put(appId, st.Actions)
+		c.statusTriggers.Add(appId, st, 0)
 		return nil, nil
 	})
 	if err != nil {
@@ -381,8 +393,8 @@ func (c *c) PersistSeriesTrigger(appId string, st SeriesTrigger) {
 			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
 		}
-		var mtId int
-		if err = r.Scan(&mtId); err != nil {
+		var stId int
+		if err = r.Scan(&stId); err != nil {
 			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
 		}
@@ -390,13 +402,13 @@ func (c *c) PersistSeriesTrigger(appId string, st SeriesTrigger) {
 			_, err := dba.Exec(`
                 INSERT INTO Action (description, script, series_trigger_id)
                 VALUES (?, ?, ?)
-            `, a.Description, a.Script, mtId)
+            `, a.Description, a.Script, stId)
 			if err != nil {
 				log.Error().AnErr("error", err).Msg("Could not insert action.")
 				return nil, err
 			}
 		}
-		c.seriesActions.put(appId+"|"+st.SeriesName, st.Actions)
+		c.seriesTriggers.Add(fmt.Sprintf("%s:%s", appId, st.SeriesName), st, 0)
 		return nil, nil
 	})
 	if err != nil {
@@ -479,36 +491,31 @@ func (c *c) populateTriggerCaches() {
 			return
 		}
 		log.Debug().Any("appId", appId).Msg("Found app.")
-		c.apps.put(appId, true)
+		c.apps.Add(appId, appId, 0)
 	}
 
 	waiter := make(chan bool, 3)
 	go func() {
-		for _, appId := range c.apps.values() {
+		for _, v := range c.apps.Items() {
+			appId := v.Object.(string)
 			tr := c.GetStatusChangeTrigger(appId)
-			c.statusActions.put(appId, tr.Actions)
+			c.statusTriggers.Add(appId, tr.Actions, 0)
 		}
 		waiter <- true
 	}()
 
 	go func() {
-		for _, appId := range c.apps.values() {
+		for _, v := range c.apps.Items() {
+			appId := v.Object.(string)
 			mts := c.ListSeriesTriggers(appId)
 			for _, mt := range mts {
-				c.seriesActions.put(fmt.Sprintf("%s:%s", appId, mt.SeriesName), mt.Actions)
+				c.seriesTriggers.Add(fmt.Sprintf("%s:%s", appId, mt.SeriesName), mt, 0)
 			}
 		}
 		waiter <- true
 	}()
 
-	go func() {
-		for _, ct := range c.ListCronTriggers() {
-			c.cronActions.put(ct.CronExpression, ct.Actions)
-		}
-		waiter <- true
-	}()
-
-	for range 3 {
+	for range 2 {
 		<-waiter
 	}
 }

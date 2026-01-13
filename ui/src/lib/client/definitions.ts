@@ -34,6 +34,7 @@ export type WithoutWriteonly<T> = T extends any ?
     } : never;
 export type Action = {
     description: string;
+    readonly id: (number) & readonlyP;
     script: string;
 };
 export type Application = {
@@ -51,6 +52,21 @@ export type Configuration = {
     readonly $schema?: (string) & readonlyP;
     data: string;
     readonly time?: (string) & readonlyP;
+};
+export type CronTrigger = {
+    readonly $schema?: (string) & readonlyP;
+    actions?: Action[];
+    cronExpression: string;
+    description: string;
+    readonly id: (number) & readonlyP;
+};
+export type CronValidationRequest = {
+    readonly $schema?: (string) & readonlyP;
+    dayOfMonth: string;
+    dayOfWeek: string;
+    hour: string;
+    minute: string;
+    month: string;
 };
 export type ErrorDetail = {
     location?: string;
@@ -97,4 +113,5 @@ export type SeriesValues = {
 export type StatusChangeTrigger = {
     readonly $schema?: (string) & readonlyP;
     actions?: Action[];
+    readonly id: (number) & readonlyP;
 };

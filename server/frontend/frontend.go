@@ -57,7 +57,7 @@ func (f *frontend) Start() {
 	router := gin.Default()
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 	hc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
-		"apiKey": {
+		"token": {
 			Type:   "http",
 			Scheme: "Bearer",
 		},
@@ -97,6 +97,11 @@ func (f *frontend) Start() {
 	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/trigger/status", "addStatusChangeTrigger"), f.c.addStatusChangeTrigger)
 	huma.Register(humaWrapper, def(http.MethodPut, "/application/{id}/trigger/status", "updateStatusChangeTrigger"), f.c.updateStatusChangeTrigger)
 	huma.Register(humaWrapper, def(http.MethodDelete, "/application/{id}/trigger/status", "deleteStatusChangeTrigger"), f.c.deleteStatusChangeTrigger)
+	huma.Register(humaWrapper, def(http.MethodGet, "/crons", "listCronTriggers"), f.c.litsCronTriggers)
+	huma.Register(humaWrapper, def(http.MethodPost, "/cron", "addCronTrigger"), f.c.addCronTrigger)
+	huma.Register(humaWrapper, def(http.MethodPut, "/cron/{id}", "updateCronTrigger"), f.c.updateCronTrigger)
+	huma.Register(humaWrapper, def(http.MethodDelete, "/cron/{id}", "deleteCronTrigger"), f.c.deleteCronTrigger)
+	huma.Register(humaWrapper, def(http.MethodPost, "/cron/expression", "isValid"), f.c.isValid)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", f.config.Addr, f.config.Port),
@@ -125,7 +130,8 @@ func (f frontend) selectNetwork() string {
 func isStatic(path string) bool {
 	return !(strings.HasPrefix(path, "/application") ||
 		strings.HasPrefix(path, "/login") ||
-		strings.HasPrefix(path, "/logout"))
+		strings.HasPrefix(path, "/logout") ||
+		strings.HasPrefix(path, "/cron"))
 }
 
 func staticHandler(engine *gin.Engine) {
@@ -165,7 +171,7 @@ func def(method string, path string, id string) huma.Operation {
 			Method: method,
 			Path:   path,
 			Security: []map[string][]string{
-				{"apiKey": {}},
+				{"token": {}},
 			},
 			OperationID: id,
 		}
