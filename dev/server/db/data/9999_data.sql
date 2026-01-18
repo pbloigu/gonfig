@@ -1,12 +1,4 @@
-CREATE TABLE IF NOT EXISTS Series (
-  id int NOT NULL AUTO_INCREMENT,
-  application_id varchar(36) NOT NULL,
-  name varchar(128) NOT NULL,
-  created datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (id),
-  UNIQUE KEY application_name (application_id,name)
-);
-
+-- +goose Up
 INSERT INTO Series(id, application_id, name)
 VALUES(1, 'app1', 'data1');
 
@@ -20,28 +12,30 @@ PRIMARY KEY (id),
 FOREIGN KEY (series_id) REFERENCES Series(id));
 
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value1');
+VALUES(1, unix_timestamp() + 100, 'value1');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value2');
+VALUES(1, unix_timestamp() + 200, 'value2');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value3');
+VALUES(1, unix_timestamp() + 300, 'value3');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value4');
+VALUES(1, unix_timestamp() + 400, 'value4');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value5');
+VALUES(1, unix_timestamp() + 500, 'value5');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value6');
+VALUES(1, unix_timestamp() +600, 'value6');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value7');
+VALUES(1, unix_timestamp() + 700, 'value7');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value8');
+VALUES(1, unix_timestamp() + 800, 'value8');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value9');
+VALUES(1, unix_timestamp() + 900, 'value9');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value10');
+VALUES(1, unix_timestamp() + 1000, 'value10');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value11');
+VALUES(1, unix_timestamp() + 1100, 'value11');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value12');
+VALUES(1, unix_timestamp() + 1200, 'value12');
 INSERT INTO SeriesValue_1 (series_id, recorded, data)
-VALUES(1, unix_timestamp(), 'value13');
+VALUES(1, unix_timestamp() + 1300, 'value13');
+
+-- +goose Down

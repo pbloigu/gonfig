@@ -158,7 +158,7 @@ func (c controller) listSeriesValues(ctx context.Context, input *struct {
 }) (*struct{ Body api.SeriesValues }, error) {
 	mvs := c.srv.ListSeriesValues(input.Id,
 		input.Name,
-		c.srv.NewSort(input.Sort, "created", input.Dir),
+		c.srv.NewSort(input.Sort, "recorded", input.Dir),
 		c.srv.NewPagination(input.Size, 10, input.Page),
 	)
 	return &struct{ Body api.SeriesValues }{Body: mvs}, nil

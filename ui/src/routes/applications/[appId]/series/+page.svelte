@@ -11,7 +11,7 @@
 	let tableElement = $state<HTMLTableElement>();
 	let { data }: PageProps = $props();
 	let selectedSeries: string | undefined = $state();
-	const headings: string[] = ['time', 'value'];
+	const headings: string[] = ['Time stored', 'Time recorded', 'Value'];
 	const options = {
 		searchable: true,
 		sortable: true,
@@ -58,8 +58,9 @@
 			ListSeriesValues(selectedSeries, data.appId, 1).then((val: SeriesValues) => {
 				let rows: any[][] = [];
 				val.values.forEach((v) => {
-					rows.push([v.time, v.data]);
-					console.log(v.data + '  ' + v.time);
+					let time = new Date((v.time||0) * 1000);
+					let recorded = new Date((v.recorded||0) * 1000);
+					rows.push([time.toLocaleString(), recorded.toLocaleString(), v.data]);
 				});
 				table.insert({
 					headings: headings,

@@ -1,17 +1,18 @@
 package series
 
 import (
+	"embed"
 	_ "embed"
 	"fmt"
-
-	"github.com/pbloigu/gonfig/server/database"
-	"github.com/rs/zerolog/log"
+	"io/fs"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pbloigu/gonfig/server/database"
+	"github.com/rs/zerolog/log"
 )
 
-//go:embed schema.sql
-var ddl string
+//go:embed db/*.sql
+var ddls embed.FS
 
 type SeriesDb interface {
 	GetSeries(applicationId string, seriesName string) Series
@@ -19,7 +20,7 @@ type SeriesDb interface {
 	ListSeriesValues(seriesId int, sort string, dir string, page int, pageSize int) []SeriesValue
 	ListSeries(applicationId string) []Series
 	InitSeries(applicationId string, seriesName string)
-	PeristSeries(applicationId string, m Series)
+	PeristSeriesValue(applicationId string, seriesName string, value SeriesValue)
 	DeleteApplication(id string)
 }
 
@@ -28,13 +29,19 @@ type m struct {
 }
 
 func New(connectionString string) SeriesDb {
-	return &m{
+
+	m := m{
 		db: startDatabase(connectionString),
 	}
+	return &m
 }
 
 func startDatabase(connectionString string) database.Database {
-	return database.New(connString(connectionString), ddl, "mysql")
+	sub, err := fs.Sub(ddls, "db")
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Failed to access migration files.")
+	}
+	return database.New(connString(connectionString), sub, "mysql")
 }
 
 func connString(connectionString string) string {
@@ -66,11 +73,12 @@ func getSeries(dba database.Context, applicationId string, seriesName string) (S
 				m.id,
 				m.name,
 				(SELECT mv.created FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1),
+				(SELECT mv.recorded FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1),
 				(SELECT mv.data FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1)
 			FROM Series m		
 			WHERE m.application_id = ?
 			AND m.name = ?
-	`, id, id), applicationId, seriesName)
+	`, id, id, id), applicationId, seriesName)
 	if err != nil {
 		log.Error().AnErr("error", err).Msg("SQL execution failed.")
 		return Series{}, err
@@ -78,7 +86,7 @@ func getSeries(dba database.Context, applicationId string, seriesName string) (S
 	defer r.Close()
 	if r.Next() {
 		m := Series{}
-		err := r.Scan(&m.Id, &m.Name, &m.LastValueTime, &m.LastValue)
+		err := r.Scan(&m.Id, &m.Name, &m.LastValueTime, &m.LastValueRecorded, &m.LastValue)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("SQL execution failed.")
 			return Series{}, err
@@ -120,6 +128,7 @@ func (m *m) ListSeriesValues(seriesId int, sort string, dir string, page int, pa
 	r, err := m.db.Context().Query(fmt.Sprintf(
 		`SELECT
                 created,
+				recorded,
                 data
             FROM SeriesValue_%d
             WHERE series_id = ?
@@ -133,7 +142,7 @@ func (m *m) ListSeriesValues(seriesId int, sort string, dir string, page int, pa
 	defer r.Close()
 	for r.Next() {
 		m := SeriesValue{}
-		err := r.Scan(&m.CreatedAt, &m.Data)
+		err := r.Scan(&m.CreatedAt, &m.RecordedAt, &m.Data)
 		if err != nil {
 			log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 		}
@@ -222,21 +231,21 @@ func (m *m) InitSeries(applicationId string, seriesName string) {
 
 }
 
-func (m *m) PeristSeries(applicationId string, series Series) {
+func (m *m) PeristSeriesValue(applicationId string, seriesName string, series SeriesValue) {
 	_, err := m.db.DoInTransaction(func(dba database.Context) (any, error) {
-		existing, err := getSeries(dba, applicationId, series.Name)
+		existing, err := getSeries(dba, applicationId, seriesName)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Fetching series failed.")
 			return nil, err
 		}
 		if existing == (Series{}) {
-			err = fmt.Errorf("no series found with the name %s for application %s", series.Name, applicationId)
+			err = fmt.Errorf("no series found with the name %s for application %s", seriesName, applicationId)
 			log.Error().AnErr("error", err).Msg("No series found.")
 			return nil, err
 		}
 		_, err = dba.Exec(fmt.Sprintf(`
-            INSERT INTO SeriesValue_%d (series_id, data) VALUES (?, ?)
-        `, existing.Id), existing.Id, series.LastValue)
+            INSERT INTO SeriesValue_%d (series_id, data, recorded) VALUES (?, ?, ?)
+        `, existing.Id), existing.Id, series.Data, series.RecordedAt)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("SQL execution failed.")
 			return nil, err

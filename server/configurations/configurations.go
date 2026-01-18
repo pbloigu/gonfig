@@ -1,7 +1,9 @@
 package configurations
 
 import (
+	"embed"
 	_ "embed"
+	"io/fs"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/pbloigu/gonfig/server/database"
@@ -52,8 +54,8 @@ type c struct {
 	apps           *cache.Cache
 }
 
-//go:embed schema.sql
-var ddl string
+//go:embed db/*.sql
+var ddls embed.FS
 
 // New constructs a Configurations backed by the database at dbLoc.
 func New(dbLoc string) Configurations {
@@ -257,14 +259,18 @@ func (c *c) UpdateApplication(a Application) {
 
 func (c *c) ListApplicationIds() []string {
 	ret := make([]string, 0)
-	for k, _ := range c.apps.Items() {
+	for k := range c.apps.Items() {
 		ret = append(ret, k)
 	}
 	return ret
 }
 
 func startDatabase(dbLoc string) database.Database {
-	return database.New(connString(dbLoc), ddl, "sqlite")
+	sub, err := fs.Sub(ddls, "db")
+	if err != nil {
+		log.Panic().AnErr("error", err).Msg("Failed to access migration files.")
+	}
+	return database.New(connString(dbLoc), sub, "sqlite")
 }
 
 func connString(dbLoc string) string {

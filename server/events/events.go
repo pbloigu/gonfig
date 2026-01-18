@@ -3,8 +3,9 @@ package events
 import "github.com/pbloigu/gonfig/api"
 
 type NewSeriesValue struct {
-	AppId  string
-	Series api.Series
+	AppId      string
+	SeriesName string
+	Value      api.SeriesValue
 }
 
 func (nsv NewSeriesValue) Type() uint32 {

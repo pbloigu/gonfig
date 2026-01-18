@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/icza/gox/gox"
 	"github.com/kelindar/event"
 	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/configurations"
@@ -38,7 +37,7 @@ type Service interface {
 	GetConfiguration(appId string) api.Configuration
 
 	// Series
-	AddSeries(appId string, series api.Series)
+	AddSeriesValue(appId string, seriesName string, value api.SeriesValue)
 	InitSeries(appId string, series api.Series)
 	GetSeries(appId string, seriesName string) api.Series
 	ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues
@@ -275,14 +274,15 @@ func (s *s) AddConfiguration(appId string, configuration api.Configuration) {
 	})
 }
 
-func (s *s) AddSeries(appId string, ser api.Series) {
-	s.serDb.PeristSeries(appId, series.Series{
-		Name:      ser.Name,
-		LastValue: ser.LastValue,
+func (s *s) AddSeriesValue(appId string, seriesName string, value api.SeriesValue) {
+	s.serDb.PeristSeriesValue(appId, seriesName, series.SeriesValue{
+		RecordedAt: value.Recoded,
+		Data:       value.Data,
 	})
 	event.Emit(events.NewSeriesValue{
-		AppId:  appId,
-		Series: ser,
+		AppId:      appId,
+		SeriesName: seriesName,
+		Value:      value,
 	})
 }
 
@@ -301,18 +301,10 @@ func (s *s) GetConfiguration(appId string) api.Configuration {
 func (s *s) GetSeries(appId string, seriesName string) api.Series {
 	m := s.serDb.GetSeries(appId, seriesName)
 	return api.Series{
-		Name:          m.Name,
-		LastValue:     m.LastValue,
-		LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
-	}
-}
-
-func timePtr(unixTs *int) *time.Time {
-	if unixTs == nil {
-		return nil
-	} else {
-		t := time.Unix(int64(*unixTs), 0)
-		return &t
+		Name:              m.Name,
+		LastValue:         m.LastValue,
+		LastValueTime:     m.LastValueTime,
+		LastValueRecorded: m.LastValueRecorded,
 	}
 }
 
@@ -411,16 +403,18 @@ func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, paginat
 	if m != (series.Series{}) {
 		result := api.SeriesValues{
 			Series: api.Series{
-				Name:          m.Name,
-				LastValue:     m.LastValue,
-				LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
+				Name:              m.Name,
+				LastValue:         m.LastValue,
+				LastValueTime:     m.LastValueTime,
+				LastValueRecorded: m.LastValueRecorded,
 			},
 			Values: func() []api.SeriesValue {
 				mvs := make([]api.SeriesValue, 0)
 				for _, mv := range s.serDb.ListSeriesValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
 					mvs = append(mvs, api.SeriesValue{
-						Data: mv.Data,
-						Time: time.Unix(int64(mv.CreatedAt), 0),
+						Data:    mv.Data,
+						Time:    mv.CreatedAt,
+						Recoded: mv.RecordedAt,
 					})
 				}
 				return mvs
@@ -439,9 +433,10 @@ func (s *s) ListSeries(appId string) []api.Series {
 	result := make([]api.Series, 0)
 	for _, m := range s.serDb.ListSeries(appId) {
 		result = append(result, api.Series{
-			Name:          m.Name,
-			LastValue:     m.LastValue,
-			LastValueTime: gox.If(m.LastValueTime != nil, timePtr(m.LastValueTime), nil),
+			Name:              m.Name,
+			LastValue:         m.LastValue,
+			LastValueTime:     m.LastValueTime,
+			LastValueRecorded: m.LastValueRecorded,
 		})
 	}
 	return result

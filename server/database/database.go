@@ -3,15 +3,23 @@ package database
 import (
 	"context"
 	"database/sql"
+	"io/fs"
 
+	goose "github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/simukti/sqldb-logger/logadapter/zerologadapter"
 )
 
+var mgrDialects = map[string]goose.Dialect{
+	"mysql":  goose.DialectMySQL,
+	"sqlite": goose.DialectSQLite3,
+}
+
 type Database interface {
 	DoInTransaction(f func(dba Context) (any, error)) (any, error)
 	Context() Context
+	Db() *sql.DB
 }
 
 type Context interface {
@@ -19,24 +27,38 @@ type Context interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }
 
-func New(uri string, ddl string, driver string) Database {
+func New(uri string, ddl fs.FS, driver string) Database {
 
-	ctx := context.Background()
 	o, err := sql.Open(driver, uri)
 
 	if err != nil {
-		log.Fatal().AnErr("error", err).Msg("Failed to open database. This is unrecoverable.")
+		log.Panic().AnErr("error", err).Msg("Failed to open database. This is unrecoverable.")
 	} else {
 		dbLogger := zerologadapter.New(log.Logger)
 		o = sqldblogger.OpenDriver(uri, o.Driver(), dbLogger /*, using_default_options*/)
 	}
-	_, err = o.ExecContext(ctx, ddl)
-	if err != nil {
-		log.Fatal().AnErr("error", err).Msg("Failed to initialize database. This is unrecoverable.")
+	if err = migrate(o, ddl, mgrDialects[driver]); err != nil {
+		log.Panic().AnErr("error", err).Msg("Failed to apply database migrations.")
 	}
 	log.Info().Any("location", uri).Msg("Database online.")
 	return &database{
 		db: o,
+	}
+}
+
+func migrate(db *sql.DB, ddl fs.FS, dialect goose.Dialect) error {
+
+	p, err := goose.NewProvider(dialect, db, ddl, goose.WithVerbose(true))
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	_, err = p.Up(ctx)
+	if err != nil {
+		return err
+	} else {
+		log.Info().Msg("Database was migrated.")
+		return nil
 	}
 }
 
@@ -54,6 +76,10 @@ func (db database) Context() Context {
 type dbCtx struct {
 	db  *sql.DB
 	ctx context.Context
+}
+
+func (db database) Db() *sql.DB {
+	return db.db
 }
 
 func (db dbCtx) Exec(query string, args ...any) (sql.Result, error) {

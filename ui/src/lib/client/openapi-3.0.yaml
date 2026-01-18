@@ -222,14 +222,21 @@ components:
           readOnly: true
           type: string
         lastValue:
+          description: Unix time at which this value was stored in the database.
           nullable: true
           readOnly: true
           type: string
+        lastValueRecorded:
+          description: Unix time this at which this value was recorded at the source.
+          format: int64
+          nullable: true
+          readOnly: true
+          type: integer
         lastValueTime:
-          format: date-time
+          format: int64
           nullable: true
           readOnly: true
-          type: string
+          type: integer
         name:
           maxLength: 128
           type: string
@@ -243,10 +250,16 @@ components:
           maxLength: 128
           nullable: true
           type: string
+        recorded:
+          description: Unix time this at which this value was recorded at the source.
+          format: int64
+          nullable: true
+          type: integer
         time:
-          format: date-time
+          description: Unix time at which this value was stored in the database.
+          format: int64
           readOnly: true
-          type: string
+          type: integer
       type: object
     SeriesValues:
       additionalProperties: false

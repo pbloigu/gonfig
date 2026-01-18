@@ -95,12 +95,14 @@ export type LoginResponse = {
 export type Series = {
     readonly $schema?: (string) & readonlyP;
     readonly lastValue?: (string | null) & readonlyP;
-    readonly lastValueTime?: (string | null) & readonlyP;
+    readonly lastValueRecorded?: (number | null) & readonlyP;
+    readonly lastValueTime?: (number | null) & readonlyP;
     name: string;
 };
 export type SeriesValue = {
     data?: string | null;
-    readonly time?: (string) & readonlyP;
+    recorded?: number | null;
+    readonly time?: (number) & readonlyP;
 };
 export type SeriesValues = {
     readonly $schema?: (string) & readonlyP;

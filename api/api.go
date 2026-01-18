@@ -19,14 +19,16 @@ type SeriesValues struct {
 }
 
 type SeriesValue struct {
-	Data *string   `json:"data" maxLength:"128" required:"false" nullable:"true"`
-	Time time.Time `json:"time" readOnly:"true" required:"false" format:"date-time"`
+	Data    *string `json:"data" maxLength:"128" required:"false" nullable:"true"`
+	Time    int     `json:"time" readOnly:"true" required:"false" doc:"Unix time at which this value was stored in the database."`
+	Recoded *int    `json:"recorded" readOnly:"false" required:"false" doc:"Unix time this at which this value was recorded at the source."`
 }
 
 type Series struct {
-	Name          string     `json:"name" requred:"true" maxLength:"128"`
-	LastValue     *string    `json:"lastValue" required:"false" readOnly:"true" nullable:"true"`
-	LastValueTime *time.Time `json:"lastValueTime" readOnly:"true" required:"false" format:"date-time" nullable:"true"`
+	Name              string  `json:"name" requred:"true" maxLength:"128"`
+	LastValue         *string `json:"lastValue" required:"false" readOnly:"true" nullable:"true" doc:"Unix time at which this value was stored in the database."`
+	LastValueTime     *int    `json:"lastValueTime" readOnly:"true" required:"false" nullable:"true"`
+	LastValueRecorded *int    `json:"lastValueRecorded" readOnly:"true" required:"false" doc:"Unix time this at which this value was recorded at the source."`
 }
 
 type Application struct {

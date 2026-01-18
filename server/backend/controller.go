@@ -42,12 +42,12 @@ func (c controller) getSeries(ctx context.Context, input *struct {
 	return &response, nil
 }
 
-func (c controller) addSeries(ctx context.Context, input *struct {
-	Id   string `path:"id" doc:"Id of the application for which to add series."`
-	Name string `path:"name" doc:"The name of the series."`
-	Body api.Series
+func (c controller) addSeriesValue(ctx context.Context, input *struct {
+	Id   string          `path:"id" doc:"Id of the application for which to add series."`
+	Name string          `path:"name" doc:"The name of the series."`
+	Body api.SeriesValue `doc:"The value to add."`
 }) (*struct{}, error) {
-	c.srv.AddSeries(input.Id, input.Body)
+	c.srv.AddSeriesValue(input.Id, input.Name, input.Body)
 	return &struct{}{}, nil
 }
 

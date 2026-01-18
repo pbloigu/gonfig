@@ -31,6 +31,7 @@ func beforeEach() {
 }
 
 func beforeAll() {
+
 	ctx := context.Background()
 	tc, err := mariadb.Run(ctx,
 		"mariadb:11.0.3",
@@ -81,31 +82,39 @@ func clear() {
 func TestInitPersistDelete(t *testing.T) {
 	repo.InitSeries("TestApp1", "testMeasurement1")
 	testValue := "testValue1"
-	repo.PeristSeries("TestApp1", Series{
-		Name:      "testMeasurement1",
-		LastValue: &testValue,
+	testRecorded := 1768723151
+	repo.PeristSeriesValue("TestApp1", "testMeasurement1", SeriesValue{
+		Data:       &testValue,
+		RecordedAt: &testRecorded,
 	})
 	m := repo.GetSeries("TestApp1", "testMeasurement1")
 	assert.Equal(t, "testMeasurement1", m.Name)
 	assert.Equal(t, testValue, *m.LastValue)
+	assert.Equal(t, testRecorded, *m.LastValueRecorded)
 	repo.DeleteApplication("TestApp1")
 }
 
 func TestPersistMultiple(t *testing.T) {
 	repo.InitSeries("TestApp1", "testMeasurement1")
 	testValue := "testValue1"
-	repo.PeristSeries("TestApp1", Series{
-		Name:      "testMeasurement1",
-		LastValue: &testValue,
+	testRecorded := 1768723151
+	repo.PeristSeriesValue("TestApp1", "testMeasurement1", SeriesValue{
+		Data:       &testValue,
+		RecordedAt: &testRecorded,
 	})
 	testValue = "testValue2"
-	repo.PeristSeries("TestApp1", Series{
-		Name:      "testMeasurement1",
-		LastValue: &testValue,
+	testRecorded = 1768723152
+	repo.PeristSeriesValue("TestApp1", "testMeasurement1", SeriesValue{
+		Data:       &testValue,
+		RecordedAt: &testRecorded,
 	})
 
 	m := repo.GetSeries("TestApp1", "testMeasurement1")
 	values := repo.ListSeriesValues(m.Id, "created", "DESC", 1, 100)
 	assert.Equal(t, 2, len(values))
+	assert.Equal(t, "testValue1", values[0].Data)
+	assert.Equal(t, "testValue2", values[1].Data)
+	assert.Equal(t, 1768723151, values[0].RecordedAt)
+	assert.Equal(t, 1768723152, values[1].RecordedAt)
 
 }

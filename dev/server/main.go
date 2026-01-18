@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"embed"
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,11 +16,11 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/mariadb"
 )
 
-//go:embed config.sql
-var config string
+//go:embed db/config/*.sql
+var config embed.FS
 
-//go:embed data.sql
-var data string
+//go:embed db/data/*.sql
+var data embed.FS
 
 func main() {
 	ctx := context.Background()
@@ -47,12 +49,12 @@ func main() {
 		CcForceIpv4:       true,
 	})
 
+	s.Start()
+	fmt.Printf("DEV SERVER STARTED.\n")
+
 	loadConfig(os.TempDir() + "/tmp.sqlite")
 	loadData(cstr)
 	fmt.Print("DATA LOADED.\n")
-
-	s.Start()
-	fmt.Printf("DEV SERVER STARTED.\n")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
@@ -66,9 +68,24 @@ func main() {
 }
 
 func loadConfig(dbLoc string) {
-	database.New("file:///"+dbLoc+"?_pragma=foreign_keys(1)", config, "sqlite")
+	sub, err := fs.Sub(config, "db/config")
+	if err != nil {
+		panic(err)
+	}
+	// fmt.Println("HELLO")
+	// files, _ := fs.ReadDir(sub, ".")
+	// for _, f := range files {
+	// 	fmt.Printf("%s\n", f.Name())
+	// }
+	// fmt.Println("HELLO")
+
+	database.New("file:///"+dbLoc+"?_pragma=foreign_keys(1)", sub, "sqlite")
 }
 
 func loadData(connStr string) {
-	database.New(connStr+"?multiStatements=true&parseTime=true", data, "mysql")
+	sub, err := fs.Sub(data, "db/data")
+	if err != nil {
+		panic(err)
+	}
+	database.New(connStr+"?multiStatements=true&parseTime=true", sub, "mysql")
 }

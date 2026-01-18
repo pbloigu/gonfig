@@ -1,13 +1,15 @@
 package series
 
 type SeriesValue struct {
-	CreatedAt int
-	Data      *string
+	CreatedAt  int
+	RecordedAt *int
+	Data       *string
 }
 
 type Series struct {
-	Id            int
-	LastValueTime *int
-	LastValue     *string
-	Name          string
+	Id                int
+	LastValueTime     *int
+	LastValueRecorded *int
+	LastValue         *string
+	Name              string
 }

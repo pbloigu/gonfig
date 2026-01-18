@@ -24,7 +24,7 @@ import (
 type Client interface {
 	GetConfiguration() (api.Configuration, error)
 	GetSeries(string) (api.Series, error)
-	AddSeries(api.Series) error
+	AddSeriesValue(string, api.SeriesValue) error
 }
 
 type client struct {
@@ -101,8 +101,8 @@ func (c client) GetSeries(seriesName string) (api.Series, error) {
 	}
 	return m, nil
 }
-func (c client) AddSeries(series api.Series) error {
-	b, err := json.Marshal(series)
+func (c client) AddSeriesValue(seriesName string, value api.SeriesValue) error {
+	b, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (c client) AddSeries(series api.Series) error {
 		c.config.ServerHost,
 		c.config.RestPort,
 		c.config.AppId,
-		series.Name), bytes.NewBuffer(b))
+		seriesName), bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

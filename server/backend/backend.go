@@ -69,7 +69,7 @@ func (b *backend) startRestApi() {
 
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/configuration"), b.c.getConfiguration)
 	huma.Register(humaWrapper, def(http.MethodGet, "/application/{id}/series/{name}"), b.c.getSeries)
-	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/series/{name}"), b.c.addSeries)
+	huma.Register(humaWrapper, def(http.MethodPost, "/application/{id}/series/{name}"), b.c.addSeriesValue)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", b.config.Addr, b.config.Port),
