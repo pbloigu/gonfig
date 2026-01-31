@@ -68,11 +68,10 @@ type Service interface {
 }
 
 type s struct {
-	serDb      series.SeriesDb
-	c          configurations.Configurations
-	online     map[string]time.Time
-	onlineLock sync.RWMutex
-	sched      scheduler.Scheduler
+	serDb  series.SeriesDb
+	c      configurations.Configurations
+	online sync.Map
+	sched  scheduler.Scheduler
 }
 
 type c struct {
@@ -115,11 +114,10 @@ func (c *c) ListStatusChangeActions(appId string) []api.Action {
 func New(seriesDb string, dbLoc string) Service {
 	serDb, c := startDatabases(seriesDb, dbLoc)
 	s := &s{
-		serDb:      serDb,
-		c:          c,
-		online:     make(map[string]time.Time),
-		onlineLock: sync.RWMutex{},
-		sched:      scheduler.New(),
+		serDb:  serDb,
+		c:      c,
+		online: sync.Map{},
+		sched:  scheduler.New(),
 	}
 	s.registerCronTriggers()
 	return s
@@ -185,22 +183,16 @@ func (s *s) NewSort(sort string, defaultSort string, dir string) Sort {
 }
 
 func (s *s) IsOnline(appId string) bool {
-	s.onlineLock.RLock()
-	defer s.onlineLock.RUnlock()
-	_, ok := s.online[appId]
+	_, ok := s.online.Load(appId)
 	return ok
 }
 
 func (s *s) Joined(appId string) {
-	s.onlineLock.Lock()
-	defer s.onlineLock.Unlock()
-	s.online[appId] = time.Now()
+	s.online.Store(appId, time.Now())
 }
 
 func (s *s) Left(appId string) {
-	s.onlineLock.Lock()
-	defer s.onlineLock.Unlock()
-	delete(s.online, appId)
+	s.online.Delete(appId)
 }
 
 func (s *s) UpdateApplication(application api.Application) api.Application {
@@ -222,6 +214,9 @@ func (s *s) AddApplication(application api.Application) api.Application {
 		Configuration: configurations.Configuration{
 			Data: application.Configuration.Data,
 		},
+	})
+	event.Emit(events.ApplicationAdded{
+		AppId: a.Id,
 	})
 	return api.Application{
 		Id:     a.Id,
@@ -266,6 +261,9 @@ func (s *s) ListApplications() []api.Application {
 func (s *s) DeleteApplication(id string) {
 	s.c.DeleteApplication(id)
 	s.serDb.DeleteApplication(id)
+	event.Emit(events.ApplicationDeleted{
+		AppId: id,
+	})
 }
 
 func (s *s) AddConfiguration(appId string, configuration api.Configuration) {

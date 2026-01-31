@@ -13,6 +13,8 @@ import (
 
 	"github.com/pbloigu/gonfig/server/database"
 	"github.com/pbloigu/gonfig/server/server"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go/modules/mariadb"
 )
 
@@ -23,6 +25,12 @@ var config embed.FS
 var data embed.FS
 
 func main() {
+
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		Level(zerolog.TraceLevel).
+		With().
+		Timestamp().
+		Logger()
 	ctx := context.Background()
 	tc, err := mariadb.Run(ctx,
 		"mariadb:11.0.3",
@@ -72,13 +80,6 @@ func loadConfig(dbLoc string) {
 	if err != nil {
 		panic(err)
 	}
-	// fmt.Println("HELLO")
-	// files, _ := fs.ReadDir(sub, ".")
-	// for _, f := range files {
-	// 	fmt.Printf("%s\n", f.Name())
-	// }
-	// fmt.Println("HELLO")
-
 	database.New("file:///"+dbLoc+"?_pragma=foreign_keys(1)", sub, "sqlite")
 }
 

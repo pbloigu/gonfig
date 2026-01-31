@@ -4,8 +4,8 @@ import (
 	"embed"
 	_ "embed"
 	"io/fs"
+	"sync"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/pbloigu/gonfig/server/database"
 	"github.com/rs/zerolog/log"
 	_ "modernc.org/sqlite"
@@ -49,9 +49,9 @@ type Configurations interface {
 
 type c struct {
 	db             database.Database
-	statusTriggers *cache.Cache
-	seriesTriggers *cache.Cache
-	apps           *cache.Cache
+	statusTriggers *sync.Map
+	seriesTriggers *sync.Map
+	apps           *sync.Map
 }
 
 //go:embed db/*.sql
@@ -61,9 +61,9 @@ var ddls embed.FS
 func New(dbLoc string) Configurations {
 	c := &c{
 		db:             startDatabase(dbLoc),
-		statusTriggers: cache.New(0, 0),
-		seriesTriggers: cache.New(0, 0),
-		apps:           cache.New(0, 0),
+		statusTriggers: &sync.Map{},
+		seriesTriggers: &sync.Map{},
+		apps:           &sync.Map{},
 	}
 	c.populateTriggerCaches()
 
@@ -203,7 +203,7 @@ func (c *c) PersistApplication(a Application) Application {
 				return nil, err
 			}
 		}
-		c.apps.Add(a.Id, true, 0)
+		c.apps.Store(a.Id, true)
 		return nil, nil
 	})
 	if err != nil {
@@ -259,9 +259,10 @@ func (c *c) UpdateApplication(a Application) {
 
 func (c *c) ListApplicationIds() []string {
 	ret := make([]string, 0)
-	for k := range c.apps.Items() {
-		ret = append(ret, k)
-	}
+	c.apps.Range(func(key, value any) bool {
+		ret = append(ret, key.(string))
+		return true
+	})
 	return ret
 }
 

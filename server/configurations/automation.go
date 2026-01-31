@@ -50,9 +50,7 @@ func (c *c) UpdateStatusChangeTrigger(appId string, t StatusChangeTrigger) {
 				return nil, err
 			}
 		}
-
-		c.statusTriggers.Replace(appId, t, 0)
-
+		c.statusTriggers.Swap(appId, t)
 		return nil, nil
 	})
 	if err != nil {
@@ -101,8 +99,8 @@ func (c *c) UpdateCronTrigger(cr CronTrigger) {
 }
 
 func (c *c) GetStatusChangeActions(appId string) []Action {
-	if res, ok := c.statusTriggers.Get(appId); ok {
-		return res.([]Action)
+	if res, ok := c.statusTriggers.Load(appId); ok {
+		return res.(StatusChangeTrigger).Actions
 	} else {
 		return []Action{}
 	}
@@ -358,7 +356,7 @@ func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) Sta
 				return nil, err
 			}
 		}
-		c.statusTriggers.Add(appId, st, 0)
+		c.statusTriggers.Store(appId, st)
 		return nil, nil
 	})
 	if err != nil {
@@ -408,7 +406,7 @@ func (c *c) PersistSeriesTrigger(appId string, st SeriesTrigger) {
 				return nil, err
 			}
 		}
-		c.seriesTriggers.Add(fmt.Sprintf("%s:%s", appId, st.SeriesName), st, 0)
+		c.seriesTriggers.Store(fmt.Sprintf("%s:%s", appId, st.SeriesName), st)
 		return nil, nil
 	})
 	if err != nil {
@@ -491,27 +489,31 @@ func (c *c) populateTriggerCaches() {
 			return
 		}
 		log.Debug().Any("appId", appId).Msg("Found app.")
-		c.apps.Add(appId, appId, 0)
+		c.apps.Store(appId, appId)
 	}
 
 	waiter := make(chan bool, 3)
 	go func() {
-		for _, v := range c.apps.Items() {
-			appId := v.Object.(string)
+		c.apps.Range(func(key, value any) bool {
+			appId := key.(string)
 			tr := c.GetStatusChangeTrigger(appId)
-			c.statusTriggers.Add(appId, tr.Actions, 0)
-		}
+			c.statusTriggers.Store(appId, tr)
+			return true
+		})
+
 		waiter <- true
 	}()
 
 	go func() {
-		for _, v := range c.apps.Items() {
-			appId := v.Object.(string)
+		c.apps.Range(func(key, value any) bool {
+			appId := key.(string)
 			mts := c.ListSeriesTriggers(appId)
 			for _, mt := range mts {
-				c.seriesTriggers.Add(fmt.Sprintf("%s:%s", appId, mt.SeriesName), mt, 0)
+				c.seriesTriggers.Store(fmt.Sprintf("%s:%s", appId, mt.SeriesName), mt)
 			}
-		}
+			return true
+		})
+
 		waiter <- true
 	}()
 

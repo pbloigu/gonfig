@@ -35,3 +35,19 @@ type Cron struct {
 func (c Cron) Type() uint32 {
 	return 4
 }
+
+type ApplicationAdded struct {
+	AppId string
+}
+
+func (na ApplicationAdded) Type() uint32 {
+	return 5
+}
+
+type ApplicationDeleted struct {
+	AppId string
+}
+
+func (na ApplicationDeleted) Type() uint32 {
+	return 6
+}

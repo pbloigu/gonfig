@@ -1,17 +1,20 @@
 package cc
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/router/auth"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/kelindar/event"
+	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
@@ -33,15 +36,17 @@ type r struct {
 	service service.Service
 	nxr     router.Router
 	closer  io.Closer
-	callers map[string]caller
+	callers sync.Map
 }
 
 func New(c Config, s service.Service) Router {
 	r := &r{
 		config:  c,
 		service: s,
-		callers: make(map[string]caller, 0),
+		callers: sync.Map{},
 	}
+	event.On(func(e events.ApplicationAdded) { r.appAdded(e.AppId) })
+	event.On(func(e events.ApplicationDeleted) { r.appDeleted(e.AppId) })
 	return r
 }
 func (r *r) Stop(timeout time.Duration) {
@@ -73,15 +78,13 @@ func (r *r) Start() {
 	// Create router instance.
 	routerConfig := &router.Config{
 		Debug: log.Debug().Enabled(),
+		// realm per client so that clients can't see each other
+		// app id servers as the realm id
 		RealmConfigs: func() []*router.RealmConfig {
 			appIds := r.service.Cached().ListApplicationIds()
 			configs := make([]*router.RealmConfig, len(appIds))
 			for i, appId := range r.service.Cached().ListApplicationIds() {
-				configs[i] = &router.RealmConfig{
-					URI:            wamp.URI(appId),
-					AnonymousAuth:  false,
-					Authenticators: []auth.Authenticator{newAuthenticator(appId, r.service.IsAllowed)},
-				}
+				configs[i] = r.appRealm(appId)
 			}
 			return configs
 		}(),
@@ -118,25 +121,51 @@ func (r *r) Start() {
 		}
 
 	}()
+	// each client sits in their own realm, so we also need a caller
+	// in each realm in order to be able to call the clients
 	for _, appId := range r.service.Cached().ListApplicationIds() {
-		c, err := newCaller(r.nxr, appId, r.service)
-		if err != nil {
-			log.Fatal().AnErr("error", err).Msg("Unable to get local caller.")
-		}
-		r.callers[appId] = c
+		r.addClient(appId)
 	}
 
 	log.Info().Any("port", r.config.Port).Any("userId", os.Getuid()).Any("groupId", os.Getgid()).Msg("Started C&C router.")
 }
 
-func (r r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
+func (r *r) appAdded(appId string) {
+	r.nxr.AddRealm(r.appRealm(appId))
+	r.addClient(appId)
+}
 
-	// XXX: currently callers are not purged if app is deleted
-	// TODO: need to pay attention to this later
-	if c, ok := r.callers[appId]; ok {
-		ctx := context.Background()
-		r, err := c.c.Call(ctx, ipc, nil, args, nil, nil)
+func (r *r) appDeleted(appId string) {
+	if c, ok := r.callers.LoadAndDelete(appId); ok {
+		c.(*caller).client.Close()
+		r.nxr.RemoveRealm(wamp.URI(appId))
+	}
+}
 
+func (r *r) addClient(appId string) {
+	cl, err := getClient(r.nxr, appId)
+	if err != nil {
+		log.Fatal().AnErr("error", err).Msg("Unable to create local client for app realm.")
+	}
+	c, err := newCaller(cl, r.service)
+	if err != nil {
+		log.Fatal().AnErr("error", err).Msg("Unable to get local caller.")
+	}
+	r.callers.Store(appId, c)
+}
+
+func (r *r) appRealm(appId string) *router.RealmConfig {
+	return &router.RealmConfig{
+		URI:            wamp.URI(appId),
+		AnonymousAuth:  false,
+		Authenticators: []auth.Authenticator{newAuthenticator(appId, r.service.IsAllowed)},
+	}
+}
+
+func (r *r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
+
+	if c, ok := r.callers.Load(appId); ok {
+		r, err := c.(*caller).call(ipc, args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -150,7 +179,23 @@ func (r r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any,
 	return nil, nil, nil
 }
 
-func (r r) selectNetwork() string {
+func getClient(nxr router.Router, realm string) (*client.Client, error) {
+	cfg := client.Config{
+		Debug:         log.Debug().Enabled(),
+		Realm:         realm,
+		Logger:        &log.Logger,
+		Serialization: client.JSON,
+	}
+	client, err := client.ConnectLocal(nxr, cfg)
+	if err != nil {
+		log.Error().AnErr("error", err).Msg("Failed to register local client.")
+		return nil, err
+	}
+	log.Info().Msg("Local RPC client attached.")
+	return client, nil
+}
+
+func (r *r) selectNetwork() string {
 	if r.config.ForceIpv4 {
 		return "tcp4"
 	} else {

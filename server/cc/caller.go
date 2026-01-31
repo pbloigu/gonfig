@@ -1,10 +1,10 @@
 package cc
 
 import (
+	"context"
 	"sync"
 
 	"github.com/gammazero/nexus/v3/client"
-	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/wamp"
 	"github.com/kelindar/event"
 	"github.com/pbloigu/gonfig/server/events"
@@ -12,74 +12,66 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var sessions *sync.Map = &sync.Map{}
+
 type caller struct {
-	c        *client.Client
-	sessions map[wamp.ID]string
-	lock     *sync.RWMutex
-	service  service.Service
+	client  *client.Client
+	service service.Service
+	router  r
 }
 
-func (clr caller) onJoin(wEvent *wamp.Event) {
+func (clr *caller) onJoin(wEvent *wamp.Event) {
 	args := wEvent.Arguments[0].(wamp.Dict)
 	session := args["session"].(wamp.ID)
-	if session == clr.c.ID() {
+	if session == clr.client.ID() {
 		// skip local subscribe
 		return
 	}
 	auth := args["Authorization"].(string)
 
-	appId, _, _ := getAuthDetails(auth)
-	clr.lock.Lock()
-	defer clr.lock.Unlock()
-	clr.sessions[session] = appId
-	event.Emit(events.ApplicationOnline{AppId: appId})
+	appId, _, err := getAuthDetails(auth)
+
+	if err != nil {
+		log.Error().AnErr("error", err).Any("appId", appId).Msg("Client found to be not authenticated upon join. Not advertising.")
+		return
+	}
+
+	sessions.Store(session, appId)
 	clr.service.Joined(appId)
+	event.Emit(events.ApplicationOnline{AppId: appId})
 	log.Debug().Any("id", session).Msg("Session established.")
 }
 
-func (clr caller) onLeave(wEvent *wamp.Event) {
+func (clr *caller) onLeave(wEvent *wamp.Event) {
 	session := wEvent.Arguments[0].(wamp.ID)
-	if session == clr.c.ID() {
+	if session == clr.client.ID() {
 		return
 	}
-	clr.lock.Lock()
-	defer clr.lock.Unlock()
-	appId := clr.sessions[session]
-	delete(clr.sessions, session)
-	event.Emit(events.ApplicationOffline{AppId: appId})
-	clr.service.Left(appId)
-}
 
-func newCaller(nxr router.Router, realm string, service service.Service) (caller, error) {
-	c, err := getClient(nxr, realm)
-	if err != nil {
-		return caller{}, err
-	} else {
-		clr := caller{
-			c:        c,
-			sessions: make(map[wamp.ID]string),
-			lock:     &sync.RWMutex{},
-			service:  service,
-		}
-
-		c.Subscribe(string(wamp.MetaEventSessionOnJoin), clr.onJoin, nil)
-		c.Subscribe(string(wamp.MetaEventSessionOnLeave), clr.onLeave, nil)
-		return clr, nil
+	appId, ok := sessions.LoadAndDelete(session)
+	if ok {
+		clr.service.Left(appId.(string))
+		event.Emit(events.ApplicationOffline{AppId: appId.(string)})
 	}
 }
 
-func getClient(nxr router.Router, realm string) (*client.Client, error) {
-	cfg := client.Config{
-		Debug:         log.Debug().Enabled(),
-		Realm:         realm,
-		Logger:        &log.Logger,
-		Serialization: client.JSON,
+func (clr *caller) call(ipc string, args wamp.List) (*wamp.Result, error) {
+	ctx := context.Background()
+	return clr.client.Call(ctx, ipc, nil, args, nil, nil)
+}
+
+func newCaller(client *client.Client, service service.Service) (*caller, error) {
+
+	clr := caller{
+		client:  client,
+		service: service,
 	}
-	client, err := client.ConnectLocal(nxr, cfg)
-	if err != nil {
-		log.Error().AnErr("error", err).Msg("Failed to register local client.")
-		return nil, err
+
+	if err := clr.client.Subscribe(string(wamp.MetaEventSessionOnJoin), clr.onJoin, nil); err != nil {
+		return &caller{}, err
 	}
-	log.Info().Msg("Local RPC client attached.")
-	return client, nil
+	if err := clr.client.Subscribe(string(wamp.MetaEventSessionOnLeave), clr.onLeave, nil); err != nil {
+		return &caller{}, err
+	}
+	return &clr, nil
 }
