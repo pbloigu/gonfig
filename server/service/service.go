@@ -449,7 +449,7 @@ func (s *s) Login(login string, password string) bool {
 }
 
 func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {
-	s.c.PersistStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
+	tr := s.c.PersistStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
 		Actions: func() []configurations.Action {
 			actions := make([]configurations.Action, 0)
 			for _, a := range trigger.Actions {
@@ -462,7 +462,18 @@ func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger
 		}(),
 	})
 	return api.StatusChangeTrigger{
-		Actions: trigger.Actions,
+		Id: tr.Id,
+		Actions: func() []api.Action {
+			actions := make([]api.Action, 0)
+			for _, a := range tr.Actions {
+				actions = append(actions, api.Action{
+					Id:          a.Id,
+					Description: a.Description,
+					Script:      a.Script,
+				})
+			}
+			return actions
+		}(),
 	}
 }
 
@@ -489,6 +500,7 @@ func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrig
 			acts := make([]api.Action, 0)
 			for _, a := range tr.Actions {
 				acts = append(acts, api.Action{
+					Id:          a.Id,
 					Description: a.Description,
 					Script:      a.Script,
 				})

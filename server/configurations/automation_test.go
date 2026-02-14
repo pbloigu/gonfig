@@ -67,7 +67,7 @@ func TestListSeriesTriggers(t *testing.T) {
 
 }
 
-func TestListStatusChangeTriggers(t *testing.T) {
+func TestGetStatusChangeTrigger(t *testing.T) {
 	repo := New(t.TempDir() + "/tmp.sqlite")
 
 	repo.PersistApplication(Application{
@@ -170,5 +170,7 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 	assert.Equal(t, "Action4", cached[1].Description)
 	assert.Equal(t, "Script3", cached[0].Script)
 	assert.Equal(t, "Script4", cached[1].Script)
+
+	cached = repo.GetStatusChangeActions("appid1")
 
 }

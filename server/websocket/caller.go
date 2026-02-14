@@ -1,4 +1,4 @@
-package cc
+package websocket
 
 import (
 	"context"

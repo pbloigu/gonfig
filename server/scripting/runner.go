@@ -1,12 +1,13 @@
-package automation
+package scripting
 
 import (
 	"context"
 
 	"github.com/kelindar/event"
-	"github.com/pbloigu/gonfig/server/cc"
+	"github.com/pbloigu/gonfig/api"
 	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/service"
+	"github.com/pbloigu/gonfig/server/websocket"
 	"github.com/risor-io/risor"
 	"github.com/risor-io/risor/builtins"
 	"github.com/risor-io/risor/object"
@@ -14,14 +15,15 @@ import (
 )
 
 type Runner interface {
+	Execute(request api.ScriptExecutionRequest) error
 }
 
 type runner struct {
 	s service.Service
-	r cc.Router
+	r websocket.Router
 }
 
-func New(s service.Service, r cc.Router) Runner {
+func New(s service.Service, r websocket.Router) Runner {
 	runner := &runner{
 		s: s,
 		r: r,
@@ -29,6 +31,15 @@ func New(s service.Service, r cc.Router) Runner {
 
 	runner.registerEventListeners()
 	return runner
+}
+
+func (r runner) Execute(request api.ScriptExecutionRequest) error {
+	opts := r.risorOpts()
+	opts = append(opts, risor.WithGlobal("ctx", request.Context))
+	if err := r.runScript(request.Script, opts...); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r runner) registerEventListeners() {
@@ -67,26 +78,26 @@ func (r runner) risorOpts() []risor.Option {
 	}
 }
 
-func (r runner) runCronScript(script string) {
+func (r runner) runScript(script string, options ...risor.Option) error {
 	ctx := context.Background()
-	opts := r.risorOpts()
-	_, err := risor.Eval(ctx, script, opts...)
+	_, err := risor.Eval(ctx, script, options...)
 
 	if err != nil {
 		log.Error().AnErr("error", err).Msg("Script execution failed.")
+		return err
 	}
+	return nil
 }
 
-func (r runner) runStatusChangeScript(appId string, script string, status Status) {
-	ctx := context.Background()
+func (r runner) runCronScript(script string) error {
+	return r.runScript(script, r.risorOpts()...)
+}
+
+func (r runner) runStatusChangeScript(appId string, script string, status Status) error {
 	opts := r.risorOpts()
-	opts = append(opts, risor.WithGlobal("context", statusCtx{
+	opts = append(opts, risor.WithGlobal("ctx", statusCtx{
 		ApplicationId: appId,
 		Status:        string(status),
 	}))
-	_, err := risor.Eval(ctx, script, opts...)
-
-	if err != nil {
-		log.Error().AnErr("error", err).Msg("Script execution failed.")
-	}
+	return r.runScript(script, opts...)
 }

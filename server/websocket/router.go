@@ -1,4 +1,4 @@
-package cc
+package websocket
 
 import (
 	"fmt"
@@ -163,7 +163,6 @@ func (r *r) appRealm(appId string) *router.RealmConfig {
 }
 
 func (r *r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
-
 	if c, ok := r.callers.Load(appId); ok {
 		r, err := c.(*caller).call(ipc, args)
 		if err != nil {

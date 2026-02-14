@@ -2,7 +2,7 @@
 /* eslint-disable */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
-import type { Application, Configuration, Series, SeriesValues, StatusChangeTrigger, CronTrigger, CronValidationRequest, LoginRequest, LoginResponse, WithoutReadonly, WithoutWriteonly } from "./definitions";
+import type { Application, Configuration, Series, SeriesValues, StatusChangeTrigger, CronTrigger, CronValidationRequest, LoginRequest, LoginResponse, ScriptExecutionRequest, WithoutReadonly, WithoutWriteonly } from "./definitions";
 
 export * from "./definitions";
 
@@ -199,6 +199,12 @@ export default class {
         );
     }
 
+    private executeScript(params: Record<string, never>, data: WithoutReadonly<ScriptExecutionRequest>, options?: AxiosRequestConfig) {
+        return this.axios.post(
+            "/scripting/execute", data, options
+        );
+    }
+
     get Default() {
         return {
             addApplication: this.addApplication.bind(this),
@@ -222,7 +228,8 @@ export default class {
             deleteCronTrigger: this.deleteCronTrigger.bind(this),
             listCronTriggers: this.listCronTriggers.bind(this),
             login: this.login.bind(this),
-            logout: this.logout.bind(this)
+            logout: this.logout.bind(this),
+            executeScript: this.executeScript.bind(this)
         };
     }
 }

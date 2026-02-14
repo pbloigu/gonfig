@@ -1,4 +1,4 @@
-package automation
+package scripting
 
 type Status string
 

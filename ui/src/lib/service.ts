@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
 import Api from "./client/api"
-import { type Application, type CronValidationRequest, type LoginResponse, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
+import { type Application, type CronValidationRequest, type ErrorModel, type LoginResponse, type ScriptExecutionRequest, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
 import { goto } from "$app/navigation";
 import { PersistentState } from '@friendofsvelte/state';
 const { MODE, VITE_API_URL } = import.meta.env;
@@ -10,6 +10,11 @@ export interface Error {
     code?: number
     message?: string
 }
+
+export type ScriptParam = {
+    key: string;
+    value: string;
+};
 
 interface Token {
     value: string | null
@@ -21,12 +26,12 @@ export const token = new PersistentState<Token>("token", {
 var baseUrl: string | undefined = undefined
 
 
-const resolveBaseUri = function(): string {
+const resolveBaseUri = function (): string {
     if (MODE == "development") {
-		return VITE_API_URL
-	} else {
-		return window.location.protocol + "//" + window.location.host
-	}
+        return VITE_API_URL
+    } else {
+        return window.location.protocol + "//" + window.location.host
+    }
 }
 
 const getApi = function (): Api {
@@ -42,7 +47,7 @@ const getApi = function (): Api {
 }
 
 const defaultErrorHandler = async function (error: AxiosError) {
-    if(error.response?.status == 401) {
+    if (error.response?.status == 401) {
         token.current.value = null
         await goto("/login")
     } else {
@@ -170,14 +175,45 @@ export const DeleteStatusChangeTrigger = async function (appId: string) {
 }
 
 export const IsValid = async function (cronExpression: CronValidationRequest): Promise<boolean> {
-    const response = await getApi().Default.isValid({},cronExpression, {})
+    const response = await getApi().Default.isValid({}, cronExpression, {})
         .catch((error: AxiosError) => {
-            if (error.response?.status == 400) {
+            if (error.status == 400) {
                 return Promise.resolve(false)
-            }else {
+            } else {
                 defaultErrorHandler(error)
             }
         })
-    
-    return !response ? Promise.resolve(false) :  Promise.resolve(true)
+
+    return !response ? Promise.resolve(false) : Promise.resolve(true)
+}
+
+const isErrorModel = (value: unknown): value is ErrorModel => 
+    !!value 
+    && typeof value === 'object' 
+    && '$schema' in value 
+    && typeof (value as ErrorModel).$schema === 'string'
+    && ((value as ErrorModel).$schema as string).indexOf("ErrorModel") >= 0
+
+export const Execute = async function (script: string, params: ScriptParam[]): Promise<string | null> {
+    let req: ScriptExecutionRequest = {
+        script: script,
+        context: {}
+    }
+    params.forEach(p => {
+        req.context[p.key] = p.value
+    })
+    const response = await getApi().Default.executeScript({}, req, {})
+        .catch((error: AxiosError) => {
+            if (error.status == 500) {
+                if (isErrorModel(error.response?.data)) {
+                    if(error.response?.data.errors){
+                        return error.response?.data.errors[0].message
+                    }
+                }
+                return error.response?.statusText
+            } else {
+                defaultErrorHandler(error)
+            }
+        })
+    return (typeof response === 'string') ? Promise.resolve(response.toString()) : null
 }

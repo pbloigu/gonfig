@@ -552,6 +552,7 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 
 	r, err := dba.Query(fmt.Sprintf(`
 		SELECT
+			id,
 			description,
 			script
 		FROM Action
@@ -566,7 +567,7 @@ func (c *c) listActions(dba database.Context, anyTrigger any) ([]Action, error) 
 	defer r.Close()
 	for r.Next() {
 		a := Action{}
-		err = r.Scan(&a.Description, &a.Script)
+		err = r.Scan(&a.Id, &a.Description, &a.Script)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Could not list actions.")
 			return nil, err

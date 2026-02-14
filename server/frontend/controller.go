@@ -11,6 +11,7 @@ import (
 	"github.com/go-http-utils/headers"
 	"github.com/google/uuid"
 	"github.com/pbloigu/gonfig/api"
+	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/service"
 )
 
@@ -44,6 +45,13 @@ func (ts *tokenStorage) isValid(token string, expirySeconds int64) bool {
 
 type controller struct {
 	srv service.Service
+	src scripting.Runner
+}
+
+func (c controller) executeScript(ctx context.Context, input *struct {
+	Body api.ScriptExecutionRequest
+}) (*struct{}, error) {
+	return &struct{}{}, c.src.Execute(input.Body)
 }
 
 func (c controller) litsCronTriggers(ctx context.Context, input *struct{}) (*struct{ Body []api.CronTrigger }, error) {

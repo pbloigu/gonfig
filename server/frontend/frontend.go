@@ -13,6 +13,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/pbloigu/gonfig/ui"
 	"github.com/rs/zerolog/log"
@@ -35,11 +36,12 @@ type frontend struct {
 	c      controller
 }
 
-func New(c Config, service service.Service) Frontend {
+func New(c Config, service service.Service, scripting scripting.Runner) Frontend {
 	return &frontend{
 		config: c,
 		c: controller{
 			srv: service,
+			src: scripting,
 		},
 	}
 }
@@ -102,6 +104,7 @@ func (f *frontend) Start() {
 	huma.Register(humaWrapper, def(http.MethodPut, "/cron/{id}", "updateCronTrigger"), f.c.updateCronTrigger)
 	huma.Register(humaWrapper, def(http.MethodDelete, "/cron/{id}", "deleteCronTrigger"), f.c.deleteCronTrigger)
 	huma.Register(humaWrapper, def(http.MethodPost, "/cron/expression", "isValid"), f.c.isValid)
+	huma.Register(humaWrapper, def(http.MethodPost, "/scripting/execute", "executeScript"), f.c.executeScript)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", f.config.Addr, f.config.Port),
@@ -131,7 +134,8 @@ func isStatic(path string) bool {
 	return !(strings.HasPrefix(path, "/application") ||
 		strings.HasPrefix(path, "/login") ||
 		strings.HasPrefix(path, "/logout") ||
-		strings.HasPrefix(path, "/cron"))
+		strings.HasPrefix(path, "/cron") ||
+		strings.HasPrefix(path, "/scripting"))
 }
 
 func staticHandler(engine *gin.Engine) {

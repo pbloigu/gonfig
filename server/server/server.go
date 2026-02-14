@@ -3,21 +3,21 @@ package server
 import (
 	"time"
 
-	"github.com/pbloigu/gonfig/server/automation"
 	"github.com/pbloigu/gonfig/server/backend"
-	"github.com/pbloigu/gonfig/server/cc"
 	"github.com/pbloigu/gonfig/server/frontend"
+	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/service"
+	"github.com/pbloigu/gonfig/server/websocket"
 	"github.com/rs/zerolog/log"
 )
 
 type server struct {
-	b backend.Backend
-	f frontend.Frontend
-	c cc.Router
-	s service.Service
-	p Params
-	r automation.Runner
+	b   backend.Backend
+	f   frontend.Frontend
+	wsr websocket.Router
+	s   service.Service
+	p   Params
+	rnr scripting.Runner
 }
 
 type Server interface {
@@ -48,8 +48,10 @@ func New(p Params) Server {
 func (s *server) Start() {
 
 	s.s = service.New(s.p.SeriesDb, s.p.DbLoc)
-	s.r = automation.New(s.s, s.c)
+	s.startWebSocket()
+	s.rnr = scripting.New(s.s, s.wsr)
 	s.startApis()
+
 }
 
 func (s *server) Stop(timeout time.Duration) {
@@ -63,7 +65,7 @@ func (s *server) Stop(timeout time.Duration) {
 		c <- true
 	}()
 	go func() {
-		s.c.Stop(timeout)
+		s.wsr.Stop(timeout)
 		c <- true
 	}()
 	for range 3 {
@@ -71,11 +73,17 @@ func (s *server) Stop(timeout time.Duration) {
 	}
 }
 
+func (s *server) startWebSocket() {
+	s.wsr = websocket.New(websocket.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
+	s.wsr.Start()
+	log.Info().Msg("WebSocket endpoints started.")
+}
+
 func (s *server) startApis() {
 	c := make(chan bool)
 
 	go func() {
-		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s)
+		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s, s.rnr)
 		s.f.Start()
 		c <- true
 	}()
@@ -86,13 +94,7 @@ func (s *server) startApis() {
 		c <- true
 	}()
 
-	go func() {
-		s.c = cc.New(cc.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
-		s.c.Start()
-		c <- true
-	}()
-
-	for range 3 {
+	for range 2 {
 		<-c
 	}
 

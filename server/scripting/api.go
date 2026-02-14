@@ -1,11 +1,11 @@
-package automation
+package scripting
 
 import (
 	"errors"
 
 	"github.com/pbloigu/gonfig/api"
-	"github.com/pbloigu/gonfig/server/cc"
 	"github.com/pbloigu/gonfig/server/service"
+	"github.com/pbloigu/gonfig/server/websocket"
 	"github.com/rs/zerolog/log"
 )
 
@@ -15,7 +15,7 @@ type data struct {
 
 type ipc struct {
 	s service.Service
-	r cc.Router
+	r websocket.Router
 }
 
 type statusCtx struct {

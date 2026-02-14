@@ -65,25 +65,30 @@ func (r CronValidationRequest) String() string {
 }
 
 type CronTrigger struct {
-	Id             int      `json:"id" required:"true" readOnly:"true"`
+	Id             int      `json:"id" required:"false" readOnly:"true"`
 	Description    string   `json:"description" required:"true" readOnly:"false"`
 	CronExpression string   `json:"cronExpression" required:"true" readOnly:"false"`
 	Actions        []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type SeriesTrigger struct {
-	Id         int      `json:"id" required:"true" readOnly:"true"`
+	Id         int      `json:"id" required:"false" readOnly:"true"`
 	SeriesName string   `json:"seriesName" required:"true" readOnly:"false"`
 	Actions    []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type StatusChangeTrigger struct {
-	Id      int      `json:"id" required:"true" readOnly:"true"`
+	Id      int      `json:"id" required:"false" readOnly:"true"`
 	Actions []Action `json:"actions" required:"false" readOnly:"false"`
 }
 
 type Action struct {
-	Id          int    `json:"id" required:"true" readOnly:"true"`
+	Id          int    `json:"id" required:"false" readOnly:"true"`
 	Description string `json:"description" required:"true" readOnly:"false"`
 	Script      string `json:"script" required:"true" readOnly:"false"`
+}
+
+type ScriptExecutionRequest struct {
+	Script  string            `json:"script" doc:"Risor script to execute."`
+	Context map[string]string `json:"context" doc:"Risor script to execute."`
 }

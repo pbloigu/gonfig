@@ -19,8 +19,10 @@
 	} from '$lib/service';
 	import { onMount } from 'svelte';
 	import type { StatusChangeTrigger } from '$lib/client/definitions';
+	import ScriptRunner from './ScriptRunner.svelte';
 	let { appId } = $props();
 	let isNew: boolean = $state(true);
+	let openIndex: number = $state(0)
 	let statusTrigger: StatusChangeTrigger = $state({
 		actions: []
 	});
@@ -35,13 +37,11 @@
 	});
 
 	const addStatusAction = () => {
-		statusTrigger.actions = [
-			{
-				description: '',
-				script: ''
-			},
-			...(statusTrigger.actions || [])
-		];
+		statusTrigger.actions?.push({
+			description: '',
+			script: ''
+		})
+		openIndex = (statusTrigger.actions?.length || 1) - 1
 	};
 
 	const saveChanges = () => {
@@ -81,7 +81,7 @@
 	{#if statusTrigger.actions != null && statusTrigger.actions.length > 0}
 		<Accordion>
 			{#each statusTrigger.actions as a, idx}
-				<AccordionItem classes={{ content: 'accordion-open' }} open={idx == 0}>
+				<AccordionItem classes={{ content: 'accordion-open' }} open={idx == openIndex}>
 					{#snippet header()}{statusTrigger.actions?.[idx]?.description}{/snippet}
 					<P>
 						<Label for="act-name-{idx}">Name</Label>
@@ -89,12 +89,13 @@
 						></Input>
 					</P>
 					<P>
-						<Label for="editor">Script</Label>
-						<CodeEditor id="editor" bind:value={statusTrigger.actions[idx].script} language="risor"
+						<Label for="editor-{idx}">Script</Label>
+						<CodeEditor id="editor-{idx}" bind:value={statusTrigger.actions[idx].script} language="risor"
 						></CodeEditor>
 					</P>
 					<P class="action-buttons">
 						<Button onclick={() => deleteAction(idx)}>Delete action</Button>
+						<ScriptRunner script={statusTrigger.actions[idx].script}></ScriptRunner>
 					</P>
 				</AccordionItem>
 			{/each}

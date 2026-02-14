@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 
 	goose "github.com/pressly/goose/v3"
@@ -10,6 +11,17 @@ import (
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/simukti/sqldb-logger/logadapter/zerologadapter"
 )
+
+type zerologBridge struct {
+}
+
+func (zlb zerologBridge) Fatalf(format string, v ...interface{}) {
+	log.Fatal().Msg(fmt.Sprintf(format, v))
+}
+
+func (zlb zerologBridge) Printf(format string, v ...interface{}) {
+	log.Info().Msg(fmt.Sprintf(format, v))
+}
 
 var mgrDialects = map[string]goose.Dialect{
 	"mysql":  goose.DialectMySQL,
@@ -48,7 +60,7 @@ func New(uri string, ddl fs.FS, driver string) Database {
 
 func migrate(db *sql.DB, ddl fs.FS, dialect goose.Dialect) error {
 
-	p, err := goose.NewProvider(dialect, db, ddl, goose.WithVerbose(true))
+	p, err := goose.NewProvider(dialect, db, ddl, goose.WithVerbose(true), goose.WithLogger(&zerologBridge{}))
 	if err != nil {
 		return err
 	}

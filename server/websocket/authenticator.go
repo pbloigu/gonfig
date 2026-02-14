@@ -1,4 +1,4 @@
-package cc
+package websocket
 
 import (
 	"encoding/base64"
