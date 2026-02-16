@@ -1,6 +1,7 @@
 package server
 
 import (
+	"sync"
 	"time"
 
 	"github.com/pbloigu/gonfig/server/backend"
@@ -46,7 +47,6 @@ func New(p Params) Server {
 }
 
 func (s *server) Start() {
-
 	s.s = service.New(s.p.SeriesDb, s.p.DbLoc)
 	s.startWebSocket()
 	s.rnr = scripting.New(s.s, s.wsr)
@@ -55,22 +55,22 @@ func (s *server) Start() {
 }
 
 func (s *server) Stop(timeout time.Duration) {
-	c := make(chan bool)
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+
 	go func() {
+		defer wg.Done()
 		s.f.Stop(timeout)
-		c <- true
 	}()
 	go func() {
+		defer wg.Done()
 		s.b.Stop(timeout)
-		c <- true
 	}()
 	go func() {
+		defer wg.Done()
 		s.wsr.Stop(timeout)
-		c <- true
 	}()
-	for range 3 {
-		<-c
-	}
+	wg.Wait()
 }
 
 func (s *server) startWebSocket() {
@@ -80,23 +80,22 @@ func (s *server) startWebSocket() {
 }
 
 func (s *server) startApis() {
-	c := make(chan bool)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
 	go func() {
+		defer wg.Done()
 		s.f = frontend.New(frontend.Config{Port: s.p.FrontendPort, Addr: s.p.FrontendAddr, ForceIpv4: s.p.FrontendForceIpv4}, s.s, s.rnr)
 		s.f.Start()
-		c <- true
 	}()
 
 	go func() {
+		defer wg.Done()
 		s.b = backend.New(backend.Config{Port: s.p.BackedPort, Addr: s.p.BackendAddr, ForceIpv4: s.p.BackendForceIpv4}, s.s)
 		s.b.Start()
-		c <- true
 	}()
 
-	for range 2 {
-		<-c
-	}
+	wg.Wait()
 
 	log.Info().Msg("API endpoints started.")
 }

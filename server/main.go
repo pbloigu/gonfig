@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"os/signal"
@@ -11,18 +12,28 @@ import (
 	"time"
 
 	"github.com/pbloigu/gonfig/server/server"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-var params = server.Params{
-	BackedPort:   8081,
-	BackendAddr:  "localhost",
-	FrontendPort: 8080,
-	FrontendAddr: "localhost",
-	DbLoc:        "/tmp/database.sqlite",
-	CcAddr:       "localhost",
-	CcPort:       9000,
+const (
+	TRACE string = "trace"
+	DEBUG string = "debug"
+	INFO  string = "info"
+	WARN  string = "warn"
+	ERROR string = "error"
+)
+
+var params = server.Params{}
+var logLevels = map[string]zerolog.Level{
+	"trace": zerolog.TraceLevel,
+	"debug": zerolog.DebugLevel,
+	"info":  zerolog.InfoLevel,
+	"warn":  zerolog.WarnLevel,
+	"error": zerolog.ErrorLevel,
 }
+
+var logLevel = zerolog.InfoLevel
 
 func main() {
 	start := time.Now()
@@ -31,10 +42,16 @@ func main() {
 	defer stop()
 	parseParams()
 	parseEnv()
+	setupLogging()
 	s := server.New(params)
 	s.Start()
 	log.Info().TimeDiff("elapsedMs", time.Now(), start).Msg("System ready.")
 	waitForTermination(s, ctx, stop)
+}
+
+func setupLogging() {
+	log.Logger = zerolog.New(os.Stdout).Level(logLevel).With().Timestamp().Logger()
+
 }
 
 func parseEnv() {
@@ -79,6 +96,12 @@ func parseEnv() {
 		params.SeriesDb = v
 	}
 
+	if v := getEnvVariable("GONFIG_LOG_LEVEL"); v != "" {
+		if lvl, ok := logLevels[v]; ok {
+			logLevel = lvl
+		}
+	}
+
 }
 
 func getEnvVariable(key string) string {
@@ -100,6 +123,13 @@ func parseParams() {
 	flag.StringVar(&params.BackendAddr, "backendAddr", "localhost", "Listen address for the backend.")
 	flag.StringVar(&params.DbLoc, "dbLocation", "/tmp/database.sqlite", "Location of the database. Default = /tmp/database.sqlite")
 	flag.StringVar(&params.SeriesDb, "seriesDb", "", "Database connection string for time series. Onyl Mysql/MariaDB are supported.")
+	flag.Func("logLevel", "Logging level, acceptable values: trace, debug, info, warn, error. Beware, debug might log sensitive stuff.", func(s string) error {
+		if lvl, ok := logLevels[s]; ok {
+			logLevel = lvl
+			return nil
+		}
+		return errors.New("")
+	})
 
 	flag.Parse()
 }

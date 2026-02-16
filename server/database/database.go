@@ -7,6 +7,7 @@ import (
 	"io/fs"
 
 	goose "github.com/pressly/goose/v3"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	sqldblogger "github.com/simukti/sqldb-logger"
 	"github.com/simukti/sqldb-logger/logadapter/zerologadapter"
@@ -15,17 +16,27 @@ import (
 type zerologBridge struct {
 }
 
-func (zlb zerologBridge) Fatalf(format string, v ...interface{}) {
-	log.Fatal().Msg(fmt.Sprintf(format, v))
+func (zlb zerologBridge) Fatalf(format string, v ...any) {
+	log.Fatal().Msg(fmt.Sprintf(format, v...))
 }
 
-func (zlb zerologBridge) Printf(format string, v ...interface{}) {
-	log.Info().Msg(fmt.Sprintf(format, v))
+func (zlb zerologBridge) Printf(format string, v ...any) {
+	log.Trace().Msg(fmt.Sprintf(format, v...))
 }
 
 var mgrDialects = map[string]goose.Dialect{
 	"mysql":  goose.DialectMySQL,
 	"sqlite": goose.DialectSQLite3,
+}
+
+var logLvls = map[zerolog.Level]sqldblogger.Level{
+	zerolog.TraceLevel: sqldblogger.LevelTrace,
+	zerolog.DebugLevel: sqldblogger.LevelDebug,
+	zerolog.InfoLevel:  sqldblogger.LevelInfo,
+	zerolog.WarnLevel:  sqldblogger.LevelInfo,
+	zerolog.ErrorLevel: sqldblogger.LevelError,
+	zerolog.FatalLevel: sqldblogger.LevelError,
+	zerolog.PanicLevel: sqldblogger.LevelError,
 }
 
 type Database interface {
@@ -47,7 +58,7 @@ func New(uri string, ddl fs.FS, driver string) Database {
 		log.Panic().AnErr("error", err).Msg("Failed to open database. This is unrecoverable.")
 	} else {
 		dbLogger := zerologadapter.New(log.Logger)
-		o = sqldblogger.OpenDriver(uri, o.Driver(), dbLogger /*, using_default_options*/)
+		o = sqldblogger.OpenDriver(uri, o.Driver(), dbLogger, sqlLogOpts()...)
 	}
 	if err = migrate(o, ddl, mgrDialects[driver]); err != nil {
 		log.Panic().AnErr("error", err).Msg("Failed to apply database migrations.")
@@ -56,6 +67,24 @@ func New(uri string, ddl fs.FS, driver string) Database {
 	return &database{
 		db: o,
 	}
+}
+
+func sqlLogOpts() []sqldblogger.Option {
+	opts := make([]sqldblogger.Option, 0)
+
+	zlLvl := log.Logger.GetLevel()
+	if lvl, ok := logLvls[zlLvl]; ok {
+		opts = append(opts, sqldblogger.WithMinimumLevel(lvl))
+	} else {
+		opts = append(opts, sqldblogger.WithMinimumLevel(sqldblogger.LevelError))
+	}
+
+	opts = append(opts, sqldblogger.WithLogArguments(true))
+	opts = append(opts, sqldblogger.WithQueryerLevel(sqldblogger.LevelTrace))
+	opts = append(opts, sqldblogger.WithExecerLevel(sqldblogger.LevelTrace))
+	opts = append(opts, sqldblogger.WithPreparerLevel(sqldblogger.LevelTrace))
+
+	return opts
 }
 
 func migrate(db *sql.DB, ddl fs.FS, dialect goose.Dialect) error {
