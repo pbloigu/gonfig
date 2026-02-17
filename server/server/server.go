@@ -1,14 +1,17 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/pbloigu/gonfig/server/backend"
 	"github.com/pbloigu/gonfig/server/frontend"
 	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/pbloigu/gonfig/server/websocket"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -73,6 +76,18 @@ func (s *server) Stop(timeout time.Duration) {
 	wg.Wait()
 }
 
+func setGinMode() {
+	if log.Logger.GetLevel() > zerolog.DebugLevel {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+		log.Debug().Msg(fmt.Sprintf("%-6s %-25s --> %s (%d handlers)", httpMethod, absolutePath, handlerName, nuHandlers))
+	}
+	gin.DebugPrintFunc = func(format string, values ...interface{}) {
+		log.Debug().Msg(fmt.Sprintf(format, values))
+	}
+}
+
 func (s *server) startWebSocket() {
 	s.wsr = websocket.New(websocket.Config{Port: s.p.CcPort, Addr: s.p.CcAddr, ForceIpv4: s.p.CcForceIpv4}, s.s)
 	s.wsr.Start()
@@ -80,6 +95,8 @@ func (s *server) startWebSocket() {
 }
 
 func (s *server) startApis() {
+	setGinMode()
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 

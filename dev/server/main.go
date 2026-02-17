@@ -31,6 +31,8 @@ func main() {
 		With().
 		Timestamp().
 		Logger()
+	// log.Logger = zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
+
 	ctx := context.Background()
 	tc, err := mariadb.Run(ctx,
 		"mariadb:11.0.3",

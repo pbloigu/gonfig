@@ -11,6 +11,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+	zerologgin "github.com/hochfrequenz/zerolog-gin"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
@@ -51,11 +52,13 @@ func (b *backend) Stop(timeout time.Duration) {
 }
 
 func (b *backend) Start() {
-	b.startRestApi()
-}
-
-func (b *backend) startRestApi() {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(zerologgin.LoggerWithOptions(&zerologgin.Options{
+		Name:          "backend",
+		Logger:        &log.Logger,
+		FieldsExclude: []string{zerologgin.PayloadFieldName, zerologgin.BodyFieldName},
+	}))
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 
 	hc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{

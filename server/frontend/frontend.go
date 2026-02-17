@@ -13,6 +13,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
 	"github.com/gin-gonic/gin"
+	zerologgin "github.com/hochfrequenz/zerolog-gin"
 	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/pbloigu/gonfig/ui"
@@ -56,7 +57,13 @@ func (f *frontend) Stop(timeout time.Duration) {
 }
 
 func (f *frontend) Start() {
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(zerologgin.LoggerWithOptions(&zerologgin.Options{
+		Name:          "frontend",
+		Logger:        &log.Logger,
+		FieldsExclude: []string{zerologgin.PayloadFieldName, zerologgin.BodyFieldName},
+	}))
 	hc := huma.DefaultConfig("Gonfig API", "1.0.0")
 	hc.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
 		"token": {
@@ -149,11 +156,11 @@ func staticHandler(engine *gin.Engine) {
 			_, err := fs.Stat(sub, strings.TrimPrefix(c.Request.URL.Path, "/"))
 			if os.IsNotExist(err) {
 				// If the file does not exist, serve index.html
-				fmt.Println("File not found, serving index.html")
+				log.Trace().Msg("File not found, serving index.html")
 				c.Request.URL.Path = "index.html"
 			} else {
 				// Serve other static files
-				fmt.Println("Serving other static files")
+				log.Trace().Msg("Serving other static files")
 			}
 
 			fileServer.ServeHTTP(c.Writer, c.Request)

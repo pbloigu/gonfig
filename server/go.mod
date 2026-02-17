@@ -34,6 +34,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/hochfrequenz/zerolog-gin v0.0.3 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/kelindar/event v1.5.2 // indirect
