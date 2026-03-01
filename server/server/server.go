@@ -1,9 +1,9 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pbloigu/gonfig/server/backend"
@@ -26,7 +26,7 @@ type server struct {
 
 type Server interface {
 	Start()
-	Stop(time.Duration)
+	Stop(context.Context)
 }
 
 type Params struct {
@@ -57,21 +57,21 @@ func (s *server) Start() {
 
 }
 
-func (s *server) Stop(timeout time.Duration) {
+func (s *server) Stop(ctx context.Context) {
 	wg := sync.WaitGroup{}
 	wg.Add(3)
 
 	go func() {
 		defer wg.Done()
-		s.f.Stop(timeout)
+		s.f.Stop(ctx)
 	}()
 	go func() {
 		defer wg.Done()
-		s.b.Stop(timeout)
+		s.b.Stop(ctx)
 	}()
 	go func() {
 		defer wg.Done()
-		s.wsr.Stop(timeout)
+		s.wsr.Stop(ctx)
 	}()
 	wg.Wait()
 }
@@ -83,8 +83,8 @@ func setGinMode() {
 	gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
 		log.Debug().Msg(fmt.Sprintf("%-6s %-25s --> %s (%d handlers)", httpMethod, absolutePath, handlerName, nuHandlers))
 	}
-	gin.DebugPrintFunc = func(format string, values ...interface{}) {
-		log.Debug().Msg(fmt.Sprintf(format, values))
+	gin.DebugPrintFunc = func(format string, values ...any) {
+		log.Debug().Msg(fmt.Sprintf(format, values...))
 	}
 }
 

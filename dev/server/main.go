@@ -31,7 +31,7 @@ func main() {
 		With().
 		Timestamp().
 		Logger()
-	// log.Logger = zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
+	// log.Logger = zerolog.New(os.Stdout).Level(zerolog.DebugLevel).With().Timestamp().Logger()
 
 	ctx := context.Background()
 	tc, err := mariadb.Run(ctx,
@@ -70,7 +70,9 @@ func main() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
 
-	s.Stop(time.Second * 10)
+	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	s.Stop(timeout)
 	if err := os.Remove(os.TempDir() + "/tmp.sqlite"); err != nil {
 		panic(err)
 	}

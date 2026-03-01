@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/wamp"
@@ -11,6 +12,8 @@ import (
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/rs/zerolog/log"
 )
+
+const callTimeoutMs = time.Millisecond * 3000
 
 var sessions *sync.Map = &sync.Map{}
 
@@ -56,7 +59,8 @@ func (clr *caller) onLeave(wEvent *wamp.Event) {
 }
 
 func (clr *caller) call(ipc string, args wamp.List) (*wamp.Result, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), callTimeoutMs)
+	defer cancel()
 	return clr.client.Call(ctx, ipc, nil, args, nil, nil)
 }
 

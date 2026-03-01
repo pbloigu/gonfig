@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
@@ -28,7 +27,7 @@ type Config struct {
 
 type Frontend interface {
 	Start()
-	Stop(time.Duration)
+	Stop(context.Context)
 }
 
 type frontend struct {
@@ -47,9 +46,7 @@ func New(c Config, service service.Service, scripting scripting.Runner) Frontend
 	}
 }
 
-func (f *frontend) Stop(timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+func (f *frontend) Stop(ctx context.Context) {
 	if err := f.http.Shutdown(ctx); err != nil {
 		log.Fatal().AnErr("error", err).Msg("Server forced to shutdown.")
 	}

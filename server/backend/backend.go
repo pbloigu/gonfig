@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humagin"
@@ -24,7 +23,7 @@ type Config struct {
 
 type Backend interface {
 	Start()
-	Stop(time.Duration)
+	Stop(context.Context)
 }
 
 type backend struct {
@@ -42,9 +41,7 @@ func New(c Config, s service.Service) Backend {
 	}
 }
 
-func (b *backend) Stop(timeout time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+func (b *backend) Stop(ctx context.Context) {
 	if err := b.http.Shutdown(ctx); err != nil {
 		log.Fatal().AnErr("error", err).Msg("Server forced to shutdown.")
 	}

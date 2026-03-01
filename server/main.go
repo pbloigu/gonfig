@@ -37,16 +37,13 @@ var logLevel = zerolog.InfoLevel
 
 func main() {
 	start := time.Now()
-	// Create context that listens for the interrupt signal from the OS.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 	parseParams()
 	parseEnv()
 	setupLogging()
 	s := server.New(params)
 	s.Start()
 	log.Info().TimeDiff("elapsedMs", time.Now(), start).Msg("System ready.")
-	waitForTermination(s, ctx, stop)
+	waitForTermination(s)
 }
 
 func setupLogging() {
@@ -134,10 +131,18 @@ func parseParams() {
 	flag.Parse()
 }
 
-func waitForTermination(s server.Server, ctx context.Context, stop context.CancelFunc) {
+func waitForTermination(s server.Server) {
+	// Create context that listens for the interrupt signal from the OS.
+	ctx, reset := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer reset()
 	<-ctx.Done()
-	stop()
+
+	reset()
+	timeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	log.Info().Msg("Shutting down gracefully, press Ctrl+C again to force")
-	s.Stop(5 * time.Second)
+	s.Stop(timeout)
+
 	log.Info().Msg("Have a nice day. Bye.")
 }

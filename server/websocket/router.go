@@ -1,13 +1,13 @@
 package websocket
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
@@ -27,7 +27,7 @@ type Config struct {
 
 type Router interface {
 	Start()
-	Stop(time.Duration)
+	Stop(context.Context)
 	CallIpc(string, string, []any) ([]any, map[string]any, error)
 }
 
@@ -49,7 +49,7 @@ func New(c Config, s service.Service) Router {
 	event.On(func(e events.ApplicationDeleted) { r.appDeleted(e.AppId) })
 	return r
 }
-func (r *r) Stop(timeout time.Duration) {
+func (r *r) Stop(timeout context.Context) {
 
 	wait := make(chan bool)
 
@@ -66,7 +66,7 @@ func (r *r) Stop(timeout time.Duration) {
 		{
 			log.Info().Msg("C&C router shut down.")
 		}
-	case <-time.After(timeout):
+	case <-timeout.Done():
 		{
 			log.Fatal().Msg("Server forced to shutdown.")
 		}

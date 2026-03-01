@@ -92,7 +92,9 @@ func main() {
 	appId, apiKey := addSelf()
 
 	var rpc = client.RpcFunctions{"hello": hello}
-	client.NewFromConfig(&log.Logger, client.Config{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	client.NewFromConfig(ctx, &log.Logger, client.Config{
 		ServerHost: "localhost",
 		CcPort:     9000,
 		RestPort:   8081,
@@ -105,5 +107,6 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM, syscall.SIGABRT)
 	<-c
+	cancel()
 	fmt.Println("SHUT DOWN")
 }

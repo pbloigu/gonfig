@@ -21,6 +21,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const restTimeoutMs = time.Millisecond * 1000
+
 type Client interface {
 	GetConfiguration() (api.Configuration, error)
 	GetSeries(string) (api.Series, error)
@@ -50,6 +52,12 @@ func (rpc RpcFunction) toWamp() func(c context.Context, w *wamp.Invocation) nexu
 	return rpc
 }
 
+func getClient() *http.Client {
+	return &http.Client{
+		Timeout: restTimeoutMs,
+	}
+}
+
 func (c client) GetConfiguration() (api.Configuration, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/application/%s/configuration",
 		c.config.ServerHost,
@@ -60,7 +68,7 @@ func (c client) GetConfiguration() (api.Configuration, error) {
 		return api.Configuration{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.ApiKey)
-	cl := &http.Client{}
+	cl := getClient()
 	r, err := cl.Do(req)
 	if err != nil {
 		return api.Configuration{}, err
@@ -86,7 +94,7 @@ func (c client) GetSeries(seriesName string) (api.Series, error) {
 		return api.Series{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.ApiKey)
-	cl := &http.Client{}
+	cl := getClient()
 	r, err := cl.Do(req)
 	if err != nil {
 		return api.Series{}, err
@@ -115,7 +123,7 @@ func (c client) AddSeriesValue(seriesName string, value api.SeriesValue) error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.config.ApiKey)
-	cl := &http.Client{}
+	cl := getClient()
 	r, err := cl.Do(req)
 	if err != nil {
 		return err
@@ -124,7 +132,7 @@ func (c client) AddSeriesValue(seriesName string, value api.SeriesValue) error {
 	return nil
 }
 
-func NewFromConfig(logger stdlog.StdLog, config Config, rpcFunctions map[string]RpcFunction) (Client, error) {
+func NewFromConfig(ctx context.Context, logger stdlog.StdLog, config Config, rpcFunctions map[string]RpcFunction) (Client, error) {
 	c := client{
 		logger: logger,
 		config: config,
@@ -133,11 +141,19 @@ func NewFromConfig(logger stdlog.StdLog, config Config, rpcFunctions map[string]
 	if err := c.config.check(); err != nil {
 		return nil, err
 	}
-	go c.startCc()
+
+	if !c.config.CCEnabled {
+		log.Info().Msg("C&C channel not enabled.")
+	} else if ctx == nil {
+		return nil, errors.New("c&c enabled, cancellaction context not given")
+	} else {
+		go c.startCc(ctx)
+	}
+
 	return &c, nil
 }
 
-func New(logger stdlog.StdLog, rpcFunctions map[string]RpcFunction) (Client, error) {
+func New(ctx context.Context, logger stdlog.StdLog, rpcFunctions map[string]RpcFunction) (Client, error) {
 	c := client{
 		logger: logger,
 		config: Config{},
@@ -147,7 +163,15 @@ func New(logger stdlog.StdLog, rpcFunctions map[string]RpcFunction) (Client, err
 	if err := c.config.check(); err != nil {
 		return nil, err
 	}
-	go c.startCc()
+
+	if !c.config.CCEnabled {
+		log.Info().Msg("C&C channel not enabled.")
+	} else if ctx == nil {
+		return nil, errors.New("c&c enabled, cancellaction context not given")
+	} else {
+		go c.startCc(ctx)
+	}
+
 	return &c, nil
 }
 
@@ -163,14 +187,20 @@ func (c *client) registerRpc() error {
 	return nil
 }
 
-func (c *client) startCc() {
-	if !c.config.CCEnabled {
-		log.Info().Msg("C&C channel not enabled.")
-	}
+func (c *client) startCc(ctx context.Context) {
 	for {
 		c.connect()
-		<-c.c.Done()
-		log.Info().Msg("C&C lost connection to the server.")
+		select {
+		case <-c.c.Done():
+			{
+				log.Info().Msg("C&C lost connection to the server.")
+			}
+		case <-ctx.Done():
+			{
+				log.Info().Msg("C&C closing channel.")
+				c.c.Close()
+			}
+		}
 	}
 }
 
@@ -191,7 +221,9 @@ func (c *client) connect() {
 			HelloDetails: wamp.Dict{"authmethods": []string{"Custom-Basic"}, "Authorization": "Basic " +
 				base64.StdEncoding.EncodeToString([]byte(c.config.AppId+":"+c.config.ApiKey))},
 		}
-		cli, err := nexus.ConnectNet(context.Background(), fmt.Sprintf("ws://%s:%d/ws", c.config.ServerHost, c.config.CcPort), cfg)
+		ctx, cancel := context.WithTimeout(context.Background(), restTimeoutMs)
+		cli, err := nexus.ConnectNet(ctx, fmt.Sprintf("ws://%s:%d/ws", c.config.ServerHost, c.config.CcPort), cfg)
+		cancel()
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Failed to estabilsh C&C connection.")
 			time.Sleep(time.Second * 3)
