@@ -270,6 +270,13 @@ func (c *Config) readConfiguration() {
 						c.CcPort = i
 					}
 				}
+			case "CC_ENABLED":
+				{
+					b, err := strconv.ParseBool(keyValue[1])
+					if err == nil {
+						c.CCEnabled = b
+					}
+				}
 			}
 		}
 	}
