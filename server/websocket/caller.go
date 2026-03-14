@@ -13,8 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const callTimeoutMs = time.Millisecond * 3000
-
 var sessions *sync.Map = &sync.Map{}
 
 type caller struct {
@@ -58,8 +56,8 @@ func (clr *caller) onLeave(wEvent *wamp.Event) {
 	}
 }
 
-func (clr *caller) call(ipc string, args wamp.List) (*wamp.Result, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), callTimeoutMs)
+func (clr *caller) call(ipc string, timeout time.Duration, args wamp.List) (*wamp.Result, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	return clr.client.Call(ctx, ipc, nil, args, nil, nil)
 }

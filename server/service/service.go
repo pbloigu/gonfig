@@ -111,11 +111,10 @@ func (c *c) ListStatusChangeActions(appId string) []api.Action {
 	return apiActions
 }
 
-func New(seriesDb string, dbLoc string) Service {
-	serDb, c := startDatabases(seriesDb, dbLoc)
+func New(seriesDb series.SeriesDb, confDb configurations.Configurations) Service {
 	s := &s{
-		serDb:  serDb,
-		c:      c,
+		serDb:  seriesDb,
+		c:      confDb,
 		online: sync.Map{},
 		sched:  scheduler.New(),
 	}
@@ -551,21 +550,4 @@ func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
 			}(),
 		}
 	}
-}
-
-func startDatabases(seriesDb string, dbLoc string) (m series.SeriesDb, c configurations.Configurations) {
-	mch := make(chan series.SeriesDb)
-	cch := make(chan configurations.Configurations)
-
-	go func() {
-		mch <- series.New(seriesDb)
-	}()
-	go func() {
-		cch <- configurations.New(dbLoc)
-	}()
-
-	m = <-mch
-	c = <-cch
-	log.Info().Msg("Databases started.")
-	return
 }

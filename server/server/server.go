@@ -7,8 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pbloigu/gonfig/server/backend"
+	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/frontend"
 	"github.com/pbloigu/gonfig/server/scripting"
+	"github.com/pbloigu/gonfig/server/series"
 	"github.com/pbloigu/gonfig/server/service"
 	"github.com/pbloigu/gonfig/server/websocket"
 	"github.com/rs/zerolog"
@@ -50,11 +52,29 @@ func New(p Params) Server {
 }
 
 func (s *server) Start() {
-	s.s = service.New(s.p.SeriesDb, s.p.DbLoc)
+	serDb, confDb := startDatabases(s.p.SeriesDb, s.p.DbLoc)
+	s.s = service.New(serDb, confDb)
 	s.startWebSocket()
 	s.rnr = scripting.New(s.s, s.wsr)
 	s.startApis()
 
+}
+
+func startDatabases(seriesDb string, dbLoc string) (m series.SeriesDb, c configurations.Configurations) {
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		m = series.New(seriesDb)
+	}()
+	go func() {
+		defer wg.Done()
+		c = configurations.New(dbLoc)
+	}()
+	wg.Wait()
+	log.Info().Msg("Databases started.")
+	return
 }
 
 func (s *server) Stop(ctx context.Context) {

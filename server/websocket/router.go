@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
@@ -28,8 +29,10 @@ type Config struct {
 type Router interface {
 	Start()
 	Stop(context.Context)
-	CallIpc(string, string, []any) ([]any, map[string]any, error)
+	CallIpc(string, string, int, []any) ([]any, map[string]any, error)
 }
+
+const defaultIpcCallTimeoutMs = time.Millisecond * 3000
 
 type r struct {
 	config  Config
@@ -162,9 +165,16 @@ func (r *r) appRealm(appId string) *router.RealmConfig {
 	}
 }
 
-func (r *r) CallIpc(appId string, ipc string, args []any) ([]any, map[string]any, error) {
+func (r *r) CallIpc(appId string, ipc string, timeoutMs int, args []any) ([]any, map[string]any, error) {
 	if c, ok := r.callers.Load(appId); ok {
-		r, err := c.(*caller).call(ipc, args)
+		var timeout time.Duration
+		if timeoutMs == 0 {
+			timeout = defaultIpcCallTimeoutMs
+		} else {
+			timeout = time.Millisecond * time.Duration(timeoutMs)
+		}
+		r, err := c.(*caller).call(ipc, timeout, args)
+
 		if err != nil {
 			return nil, nil, err
 		}

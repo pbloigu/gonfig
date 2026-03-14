@@ -66,8 +66,8 @@ func (l logging) Debug(msg any) {
 	}
 }
 
-func (i ipc) Call(appId string, proc string, args []any) (ipcResult, error) {
-	list, named, err := i.r.CallIpc(appId, proc, args)
+func (i ipc) Call(appId string, proc string, timeoutMs int, args []any) (ipcResult, error) {
+	list, named, err := i.r.CallIpc(appId, proc, timeoutMs, args)
 	if err != nil {
 		log.Debug().AnErr("error", err).Msg("IPC call failed.")
 		return ipcResult{}, errors.New(err.Error())
