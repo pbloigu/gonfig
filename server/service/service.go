@@ -123,7 +123,10 @@ func New(seriesDb series.SeriesDb, confDb configurations.Configurations) Service
 }
 
 func (s *s) IsValid(request api.CronValidationRequest) bool {
-	_, err := cron.ParseStandard(request.String())
+	sch, err := cron.ParseStandard(request.String())
+	if err == nil {
+		log.Debug().Any("next", sch.Next(time.Now())).Msg("Next invocation.")
+	}
 	return err == nil
 }
 

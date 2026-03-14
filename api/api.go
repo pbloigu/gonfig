@@ -61,7 +61,7 @@ type CronValidationRequest struct {
 }
 
 func (r CronValidationRequest) String() string {
-	return fmt.Sprintf("%s %s %s %s %s", r.Minute, r.Hour, r.Dom, r.Minute, r.Dow)
+	return fmt.Sprintf("%s %s %s %s %s", r.Minute, r.Hour, r.Dom, r.Month, r.Dow)
 }
 
 type CronTrigger struct {
