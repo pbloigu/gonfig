@@ -11,6 +11,7 @@ import (
 	"github.com/pbloigu/gonfig/server/events"
 	"github.com/pbloigu/gonfig/server/scheduler"
 	"github.com/pbloigu/gonfig/server/series"
+	"github.com/pbloigu/gonfig/server/util"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
@@ -111,12 +112,12 @@ func (c *c) ListStatusChangeActions(appId string) []api.Action {
 	return apiActions
 }
 
-func New(seriesDb series.SeriesDb, confDb configurations.Configurations) Service {
+func New(seriesDb series.SeriesDb, confDb configurations.Configurations, sched scheduler.Scheduler) Service {
 	s := &s{
 		serDb:  seriesDb,
 		c:      confDb,
 		online: sync.Map{},
-		sched:  scheduler.New(),
+		sched:  sched,
 	}
 	s.registerCronTriggers()
 	return s
@@ -311,55 +312,14 @@ func (s *s) GetSeries(appId string, seriesName string) api.Series {
 func (s *s) ListCronTriggers() []api.CronTrigger {
 	r := make([]api.CronTrigger, 0)
 	for _, ct := range s.c.ListCronTriggers() {
-		r = append(r, api.CronTrigger{
-			Description:    ct.Description,
-			CronExpression: ct.CronExpression,
-			Actions: func() []api.Action {
-				acts := make([]api.Action, 0)
-				for _, a := range ct.Actions {
-					acts = append(acts, api.Action{
-						Description: a.Description,
-						Script:      a.Script,
-					})
-				}
-				return acts
-			}(),
-		})
+		r = append(r, util.CronTriggerToApi(ct))
 	}
 	return r
 }
 
 func (s *s) AddCronTrigger(trigger api.CronTrigger) api.CronTrigger {
-	tr := s.c.PersistCronTrigger(configurations.CronTrigger{
-		Description:    trigger.Description,
-		CronExpression: trigger.CronExpression,
-		Actions: func() []configurations.Action {
-			actions := make([]configurations.Action, 0)
-			for _, a := range trigger.Actions {
-				actions = append(actions, configurations.Action{
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return actions
-		}(),
-	})
-
-	apiTr := api.CronTrigger{
-		Id:             tr.Id,
-		Description:    tr.Description,
-		CronExpression: tr.CronExpression,
-		Actions: func() []api.Action {
-			actions := make([]api.Action, 0)
-			for _, a := range tr.Actions {
-				actions = append(actions, api.Action{
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return actions
-		}(),
-	}
+	tr := s.c.PersistCronTrigger(util.CronTriggerFromApi(trigger))
+	apiTr := util.CronTriggerToApi(tr)
 	s.sched.RegisterCronTrigger(apiTr)
 	return apiTr
 }
@@ -370,31 +330,11 @@ func (s *s) DeleteCronTrigger(id int) {
 }
 
 func (s *s) UpdateCronTrigger(trigger api.CronTrigger) api.CronTrigger {
-	s.c.UpdateCronTrigger(configurations.CronTrigger{
-		Id:             trigger.Id,
-		Description:    trigger.Description,
-		CronExpression: trigger.CronExpression,
-		Actions: func() []configurations.Action {
-			return nil
-		}(),
-	})
+	s.c.UpdateCronTrigger(util.CronTriggerFromApi(trigger))
 	s.sched.DeregisterCronTrigger(trigger.Id)
 	s.sched.RegisterCronTrigger(trigger)
 	tr := s.c.GetCronTrigger(trigger.Id)
-	return api.CronTrigger{
-		Id:          tr.Id,
-		Description: tr.CronExpression,
-		Actions: func() []api.Action {
-			acts := make([]api.Action, 0)
-			for _, a := range tr.Actions {
-				acts = append(acts, api.Action{
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return acts
-		}(),
-	}
+	return util.CronTriggerToApi(tr)
 
 }
 
@@ -451,32 +391,8 @@ func (s *s) Login(login string, password string) bool {
 }
 
 func (s *s) AddStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {
-	tr := s.c.PersistStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
-		Actions: func() []configurations.Action {
-			actions := make([]configurations.Action, 0)
-			for _, a := range trigger.Actions {
-				actions = append(actions, configurations.Action{
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return actions
-		}(),
-	})
-	return api.StatusChangeTrigger{
-		Id: tr.Id,
-		Actions: func() []api.Action {
-			actions := make([]api.Action, 0)
-			for _, a := range tr.Actions {
-				actions = append(actions, api.Action{
-					Id:          a.Id,
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return actions
-		}(),
-	}
+	tr := s.c.PersistStatusChangeTrigger(appId, util.StatusChangeTriggerFromApi(trigger))
+	return util.StatusChageTriggerToApi(tr)
 }
 
 func (s *s) DeleteStatusChangeTrigger(appId string) {
@@ -484,32 +400,9 @@ func (s *s) DeleteStatusChangeTrigger(appId string) {
 }
 
 func (s *s) UpdateStatusChangeTrigger(appId string, trigger api.StatusChangeTrigger) api.StatusChangeTrigger {
-	s.c.UpdateStatusChangeTrigger(appId, configurations.StatusChangeTrigger{
-		Actions: func() []configurations.Action {
-			actions := make([]configurations.Action, 0)
-			for _, a := range trigger.Actions {
-				actions = append(actions, configurations.Action{
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return actions
-		}(),
-	})
+	s.c.UpdateStatusChangeTrigger(appId, util.StatusChangeTriggerFromApi(trigger))
 	tr := s.c.GetStatusChangeTrigger(appId)
-	return api.StatusChangeTrigger{
-		Actions: func() []api.Action {
-			acts := make([]api.Action, 0)
-			for _, a := range tr.Actions {
-				acts = append(acts, api.Action{
-					Id:          a.Id,
-					Description: a.Description,
-					Script:      a.Script,
-				})
-			}
-			return acts
-		}(),
-	}
+	return util.StatusChageTriggerToApi(tr)
 }
 
 func (s *s) GetCronTrigger(id int) *api.CronTrigger {
@@ -517,21 +410,8 @@ func (s *s) GetCronTrigger(id int) *api.CronTrigger {
 	if tr.Id == 0 {
 		return nil
 	} else {
-		return &api.CronTrigger{
-			Id:             tr.Id,
-			Description:    tr.Description,
-			CronExpression: tr.CronExpression,
-			Actions: func() []api.Action {
-				acts := make([]api.Action, 0)
-				for _, a := range tr.Actions {
-					acts = append(acts, api.Action{
-						Script:      a.Script,
-						Description: a.Description,
-					})
-				}
-				return acts
-			}(),
-		}
+		apiTr := util.CronTriggerToApi(tr)
+		return &apiTr
 	}
 }
 
@@ -540,17 +420,7 @@ func (s *s) GetStatusChangeTrigger(appId string) *api.StatusChangeTrigger {
 	if tr.Id == 0 {
 		return nil
 	} else {
-		return &api.StatusChangeTrigger{
-			Actions: func() []api.Action {
-				acts := make([]api.Action, 0)
-				for _, a := range tr.Actions {
-					acts = append(acts, api.Action{
-						Description: a.Description,
-						Script:      a.Script,
-					})
-				}
-				return acts
-			}(),
-		}
+		apiTr := util.StatusChageTriggerToApi(tr)
+		return &apiTr
 	}
 }

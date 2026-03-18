@@ -9,6 +9,7 @@ import (
 	"github.com/pbloigu/gonfig/server/backend"
 	"github.com/pbloigu/gonfig/server/configurations"
 	"github.com/pbloigu/gonfig/server/frontend"
+	"github.com/pbloigu/gonfig/server/scheduler"
 	"github.com/pbloigu/gonfig/server/scripting"
 	"github.com/pbloigu/gonfig/server/series"
 	"github.com/pbloigu/gonfig/server/service"
@@ -53,7 +54,7 @@ func New(p Params) Server {
 
 func (s *server) Start() {
 	serDb, confDb := startDatabases(s.p.SeriesDb, s.p.DbLoc)
-	s.s = service.New(serDb, confDb)
+	s.s = service.New(serDb, confDb, scheduler.New())
 	s.startWebSocket()
 	s.rnr = scripting.New(s.s, s.wsr)
 	s.startApis()

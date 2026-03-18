@@ -31,3 +31,6 @@ packages:
   github.com/pbloigu/gonfig/server/configurations:
     config:
       all: true
+  github.com/pbloigu/gonfig/server/scheduler:
+    config:
+      all: true
