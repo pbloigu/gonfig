@@ -14,10 +14,36 @@ import (
 //go:embed db/*.sql
 var ddls embed.FS
 
+type Direction string
+type Field string
+
+const (
+	ASC  Direction = "ASC"
+	DESC Direction = "DESC"
+)
+
+const (
+	NAME     Field = "name"
+	CREATED  Field = "created"
+	RECORDED Field = "recorded"
+	DATA     Field = "data"
+	ID       Field = "id"
+)
+
+type Sort struct {
+	Field Field
+	Dir   Direction
+}
+
+type Pagination struct {
+	Page int
+	Size int
+}
+
 type SeriesDb interface {
 	GetSeries(applicationId string, seriesName string) Series
 	CountSeriesValues(seriesId int) int
-	ListSeriesValues(seriesId int, sort string, dir string, page int, pageSize int) []SeriesValue
+	ListSeriesValues(seriesId int, sort Sort, pagination Pagination) []SeriesValue
 	ListSeries(applicationId string) []Series
 	InitSeries(applicationId string, seriesName string)
 	PeristSeriesValue(applicationId string, seriesName string, value SeriesValue)
@@ -67,34 +93,32 @@ func getSeries(dba database.Context, applicationId string, seriesName string) (S
 		return Series{}, err
 	}
 	r.Close()
+	m := Series{
+		Id:   id,
+		Name: seriesName,
+	}
 
-	r, err = dba.Query(fmt.Sprintf(
+	r2, err := dba.Query(fmt.Sprintf(
 		`SELECT
-				m.id,
-				m.name,
-				(SELECT mv.created FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1),
-				(SELECT mv.recorded FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1),
-				(SELECT mv.data FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1)
-			FROM Series m		
-			WHERE m.application_id = ?
-			AND m.name = ?
-	`, id, id, id), applicationId, seriesName)
+			created,
+			recorded,
+			data
+		FROM SeriesValue_%d
+		ORDER BY id DESC LIMIT 1
+	`, id))
 	if err != nil {
 		log.Error().AnErr("error", err).Msg("SQL execution failed.")
 		return Series{}, err
 	}
-	defer r.Close()
-	if r.Next() {
-		m := Series{}
-		err := r.Scan(&m.Id, &m.Name, &m.LastValueTime, &m.LastValueRecorded, &m.LastValue)
+	defer r2.Close()
+	if r2.Next() {
+		err := r2.Scan(&m.LastValueTime, &m.LastValueRecorded, &m.LastValue)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("SQL execution failed.")
 			return Series{}, err
 		}
-		return m, nil
-	} else {
-		return Series{}, nil
 	}
+	return m, nil
 }
 
 func (m *m) GetSeries(applicationId string, seriesName string) Series {
@@ -109,8 +133,7 @@ func (m *m) GetSeries(applicationId string, seriesName string) Series {
 func (m *m) CountSeriesValues(seriesId int) int {
 	r, err := m.db.Context().Query(fmt.Sprintf(`
         SELECT COUNT(*) 
-        FROM SeriesValue_%d 
-        WHERE series_id = ?`, seriesId), seriesId)
+        FROM SeriesValue_%d`, seriesId))
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 	}
@@ -123,26 +146,26 @@ func (m *m) CountSeriesValues(seriesId int) int {
 	return cnt
 }
 
-func (m *m) ListSeriesValues(seriesId int, sort string, dir string, page int, pageSize int) []SeriesValue {
+func (m *m) ListSeriesValues(seriesId int, sort Sort, pagination Pagination) []SeriesValue {
 	result := make([]SeriesValue, 0)
 	r, err := m.db.Context().Query(fmt.Sprintf(
 		`SELECT
+				id,
                 created,
 				recorded,
                 data
             FROM SeriesValue_%d
-            WHERE series_id = ?
             ORDER BY %s %s
             LIMIT %d
             OFFSET %d
-        `, seriesId, sort, dir, pageSize, (page-1)*pageSize), seriesId)
+        `, seriesId, sort.Field, sort.Dir, pagination.Size, (pagination.Page-1)*pagination.Size))
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 	}
 	defer r.Close()
 	for r.Next() {
 		m := SeriesValue{}
-		err := r.Scan(&m.CreatedAt, &m.RecordedAt, &m.Data)
+		err := r.Scan(&m.Id, &m.CreatedAt, &m.RecordedAt, &m.Data)
 		if err != nil {
 			log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 		}
@@ -154,40 +177,41 @@ func (m *m) ListSeriesValues(seriesId int, sort string, dir string, page int, pa
 func (m *m) ListSeries(applicationId string) []Series {
 	result := make([]Series, 0)
 
-	r, err := m.db.Context().Query(`SELECT id FROM Series where application_id = ?`, applicationId)
+	r, err := m.db.Context().Query(`SELECT id, name FROM Series WHERE application_id = ? ORDER BY name ASC`, applicationId)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 	}
 	defer r.Close()
 	var id int
+	var name string
 	for r.Next() {
-		if err = r.Scan(&id); err != nil {
+		if err = r.Scan(&id, &name); err != nil {
 			log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 		}
-		r, err = m.db.Context().Query(fmt.Sprintf(
-			`SELECT
-                    m.id,
-                    m.name,
-                    (SELECT mv.created FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1),
-                    (SELECT mv.data FROM SeriesValue_%d mv WHERE mv.series_id = m.id ORDER BY mv.created DESC LIMIT 1)
-                FROM Series m		
-                WHERE m.application_id = ?
-                ORDER BY m.name ASC	
-                `, id, id), applicationId)
-		if err != nil {
-			log.Panic().AnErr("error", err).Msg("SQL execution failed.")
-		}
-		defer r.Close()
-
-		for r.Next() {
-
-			m := Series{}
-			err := r.Scan(&m.Id, &m.Name, &m.LastValueTime, &m.LastValue)
+		result = append(result, func() Series {
+			r2, err := m.db.Context().Query(fmt.Sprintf(
+				`SELECT
+                    created,
+                    data
+                FROM SeriesValue_%d
+                ORDER BY id DESC LIMIT 1
+                `, id))
 			if err != nil {
 				log.Panic().AnErr("error", err).Msg("SQL execution failed.")
 			}
-			result = append(result, m)
-		}
+			defer r2.Close()
+			m := Series{
+				Id:   id,
+				Name: name,
+			}
+			if r2.Next() {
+				err := r2.Scan(&m.LastValueTime, &m.LastValue)
+				if err != nil {
+					log.Panic().AnErr("error", err).Msg("SQL execution failed.")
+				}
+			}
+			return m
+		}())
 	}
 	return result
 }

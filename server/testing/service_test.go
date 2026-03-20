@@ -318,11 +318,11 @@ func (st *ServiceTestSuite) TestListSeriesValues() {
 			Data:       &data,
 		})
 	}
-	st.serMock.EXPECT().ListSeriesValues(666, "created", string(service.ASC), 2, 10).Return(dbValues).Once()
+	st.serMock.EXPECT().ListSeriesValues(666, series.Sort{Field: series.CREATED, Dir: series.ASC}, series.Pagination{Page: 2, Size: 10}).Return(dbValues).Once()
 	st.serMock.EXPECT().GetSeries("appId", "seriesName").Return(dbSeries).Once()
 	st.serMock.EXPECT().CountSeriesValues(666).Return(100).Once()
 
-	series := st.s.ListSeriesValues("appId", "seriesName", service.Sort{Sort: "created", Dir: service.ASC}, service.Pargination{Page: 2, Size: 10})
+	series := st.s.ListSeriesValues("appId", "seriesName", service.Sort{Sort: "created", Dir: service.ASC}, service.Pagination{Page: 2, Size: 10})
 	st.Equal("seriesName", series.Series.Name)
 	st.Equal(*series.Series.LastValue, lValue)
 	st.Equal(*series.Series.LastValueRecorded, lRecorded)

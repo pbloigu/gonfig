@@ -1156,7 +1156,7 @@ func (_c *MockService_ListSeries_Call) RunAndReturn(run func(appId string) []api
 }
 
 // ListSeriesValues provides a mock function for the type MockService
-func (_mock *MockService) ListSeriesValues(appId string, seriesName string, sort service.Sort, pagination service.Pargination) api.SeriesValues {
+func (_mock *MockService) ListSeriesValues(appId string, seriesName string, sort service.Sort, pagination service.Pagination) api.SeriesValues {
 	ret := _mock.Called(appId, seriesName, sort, pagination)
 
 	if len(ret) == 0 {
@@ -1164,7 +1164,7 @@ func (_mock *MockService) ListSeriesValues(appId string, seriesName string, sort
 	}
 
 	var r0 api.SeriesValues
-	if returnFunc, ok := ret.Get(0).(func(string, string, service.Sort, service.Pargination) api.SeriesValues); ok {
+	if returnFunc, ok := ret.Get(0).(func(string, string, service.Sort, service.Pagination) api.SeriesValues); ok {
 		r0 = returnFunc(appId, seriesName, sort, pagination)
 	} else {
 		r0 = ret.Get(0).(api.SeriesValues)
@@ -1181,12 +1181,12 @@ type MockService_ListSeriesValues_Call struct {
 //   - appId string
 //   - seriesName string
 //   - sort service.Sort
-//   - pagination service.Pargination
+//   - pagination service.Pagination
 func (_e *MockService_Expecter) ListSeriesValues(appId interface{}, seriesName interface{}, sort interface{}, pagination interface{}) *MockService_ListSeriesValues_Call {
 	return &MockService_ListSeriesValues_Call{Call: _e.mock.On("ListSeriesValues", appId, seriesName, sort, pagination)}
 }
 
-func (_c *MockService_ListSeriesValues_Call) Run(run func(appId string, seriesName string, sort service.Sort, pagination service.Pargination)) *MockService_ListSeriesValues_Call {
+func (_c *MockService_ListSeriesValues_Call) Run(run func(appId string, seriesName string, sort service.Sort, pagination service.Pagination)) *MockService_ListSeriesValues_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
@@ -1200,9 +1200,9 @@ func (_c *MockService_ListSeriesValues_Call) Run(run func(appId string, seriesNa
 		if args[2] != nil {
 			arg2 = args[2].(service.Sort)
 		}
-		var arg3 service.Pargination
+		var arg3 service.Pagination
 		if args[3] != nil {
-			arg3 = args[3].(service.Pargination)
+			arg3 = args[3].(service.Pagination)
 		}
 		run(
 			arg0,
@@ -1219,7 +1219,7 @@ func (_c *MockService_ListSeriesValues_Call) Return(seriesValues api.SeriesValue
 	return _c
 }
 
-func (_c *MockService_ListSeriesValues_Call) RunAndReturn(run func(appId string, seriesName string, sort service.Sort, pagination service.Pargination) api.SeriesValues) *MockService_ListSeriesValues_Call {
+func (_c *MockService_ListSeriesValues_Call) RunAndReturn(run func(appId string, seriesName string, sort service.Sort, pagination service.Pagination) api.SeriesValues) *MockService_ListSeriesValues_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1282,18 +1282,18 @@ func (_c *MockService_Login_Call) RunAndReturn(run func(login string, password s
 }
 
 // NewPagination provides a mock function for the type MockService
-func (_mock *MockService) NewPagination(size int, defaultSize int, page int) service.Pargination {
+func (_mock *MockService) NewPagination(size int, defaultSize int, page int) service.Pagination {
 	ret := _mock.Called(size, defaultSize, page)
 
 	if len(ret) == 0 {
 		panic("no return value specified for NewPagination")
 	}
 
-	var r0 service.Pargination
-	if returnFunc, ok := ret.Get(0).(func(int, int, int) service.Pargination); ok {
+	var r0 service.Pagination
+	if returnFunc, ok := ret.Get(0).(func(int, int, int) service.Pagination); ok {
 		r0 = returnFunc(size, defaultSize, page)
 	} else {
-		r0 = ret.Get(0).(service.Pargination)
+		r0 = ret.Get(0).(service.Pagination)
 	}
 	return r0
 }
@@ -1334,12 +1334,12 @@ func (_c *MockService_NewPagination_Call) Run(run func(size int, defaultSize int
 	return _c
 }
 
-func (_c *MockService_NewPagination_Call) Return(pargination service.Pargination) *MockService_NewPagination_Call {
-	_c.Call.Return(pargination)
+func (_c *MockService_NewPagination_Call) Return(pagination service.Pagination) *MockService_NewPagination_Call {
+	_c.Call.Return(pagination)
 	return _c
 }
 
-func (_c *MockService_NewPagination_Call) RunAndReturn(run func(size int, defaultSize int, page int) service.Pargination) *MockService_NewPagination_Call {
+func (_c *MockService_NewPagination_Call) RunAndReturn(run func(size int, defaultSize int, page int) service.Pagination) *MockService_NewPagination_Call {
 	_c.Call.Return(run)
 	return _c
 }

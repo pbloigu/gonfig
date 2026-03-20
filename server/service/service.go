@@ -24,7 +24,7 @@ type Cached interface {
 // Service interface with all public functions in this file
 type Service interface {
 	// Utility
-	NewPagination(size int, defaultSize int, page int) Pargination
+	NewPagination(size int, defaultSize int, page int) Pagination
 	NewSort(sort string, defaultSort string, dir string) Sort
 
 	// Application
@@ -41,7 +41,7 @@ type Service interface {
 	AddSeriesValue(appId string, seriesName string, value api.SeriesValue)
 	InitSeries(appId string, series api.Series)
 	GetSeries(appId string, seriesName string) api.Series
-	ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues
+	ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pagination) api.SeriesValues
 	ListSeries(appId string) []api.Series
 
 	// Authentication
@@ -91,7 +91,7 @@ type Sort struct {
 	Dir  Direction
 }
 
-type Pargination struct {
+type Pagination struct {
 	Page int
 	Size int
 }
@@ -145,8 +145,8 @@ func (s *s) Cached() Cached {
 	}
 }
 
-func (s *s) NewPagination(size int, defaultSize int, page int) Pargination {
-	return Pargination{
+func (s *s) NewPagination(size int, defaultSize int, page int) Pagination {
+	return Pagination{
 		Page: func() int {
 			if page < 1 {
 				return 1
@@ -338,7 +338,7 @@ func (s *s) UpdateCronTrigger(trigger api.CronTrigger) api.CronTrigger {
 
 }
 
-func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pargination) api.SeriesValues {
+func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, pagination Pagination) api.SeriesValues {
 	m := s.serDb.GetSeries(appId, seriesName)
 	if m != (series.Series{}) {
 		result := api.SeriesValues{
@@ -350,7 +350,10 @@ func (s *s) ListSeriesValues(appId string, seriesName string, sort Sort, paginat
 			},
 			Values: func() []api.SeriesValue {
 				mvs := make([]api.SeriesValue, 0)
-				for _, mv := range s.serDb.ListSeriesValues(m.Id, sort.Sort, string(sort.Dir), pagination.Page, pagination.Size) {
+				for _, mv := range s.serDb.ListSeriesValues(m.Id, series.Sort{
+					Field: series.Field(sort.Sort), Dir: series.Direction(sort.Dir)},
+					series.Pagination{
+						Page: pagination.Page, Size: pagination.Size}) {
 					mvs = append(mvs, api.SeriesValue{
 						Data:    mv.Data,
 						Time:    mv.CreatedAt,

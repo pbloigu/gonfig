@@ -284,16 +284,16 @@ func (_c *MockSeriesDb_ListSeries_Call) RunAndReturn(run func(applicationId stri
 }
 
 // ListSeriesValues provides a mock function for the type MockSeriesDb
-func (_mock *MockSeriesDb) ListSeriesValues(seriesId int, sort string, dir string, page int, pageSize int) []series.SeriesValue {
-	ret := _mock.Called(seriesId, sort, dir, page, pageSize)
+func (_mock *MockSeriesDb) ListSeriesValues(seriesId int, sort series.Sort, pagination series.Pagination) []series.SeriesValue {
+	ret := _mock.Called(seriesId, sort, pagination)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListSeriesValues")
 	}
 
 	var r0 []series.SeriesValue
-	if returnFunc, ok := ret.Get(0).(func(int, string, string, int, int) []series.SeriesValue); ok {
-		r0 = returnFunc(seriesId, sort, dir, page, pageSize)
+	if returnFunc, ok := ret.Get(0).(func(int, series.Sort, series.Pagination) []series.SeriesValue); ok {
+		r0 = returnFunc(seriesId, sort, pagination)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]series.SeriesValue)
@@ -309,42 +309,30 @@ type MockSeriesDb_ListSeriesValues_Call struct {
 
 // ListSeriesValues is a helper method to define mock.On call
 //   - seriesId int
-//   - sort string
-//   - dir string
-//   - page int
-//   - pageSize int
-func (_e *MockSeriesDb_Expecter) ListSeriesValues(seriesId interface{}, sort interface{}, dir interface{}, page interface{}, pageSize interface{}) *MockSeriesDb_ListSeriesValues_Call {
-	return &MockSeriesDb_ListSeriesValues_Call{Call: _e.mock.On("ListSeriesValues", seriesId, sort, dir, page, pageSize)}
+//   - sort series.Sort
+//   - pagination series.Pagination
+func (_e *MockSeriesDb_Expecter) ListSeriesValues(seriesId interface{}, sort interface{}, pagination interface{}) *MockSeriesDb_ListSeriesValues_Call {
+	return &MockSeriesDb_ListSeriesValues_Call{Call: _e.mock.On("ListSeriesValues", seriesId, sort, pagination)}
 }
 
-func (_c *MockSeriesDb_ListSeriesValues_Call) Run(run func(seriesId int, sort string, dir string, page int, pageSize int)) *MockSeriesDb_ListSeriesValues_Call {
+func (_c *MockSeriesDb_ListSeriesValues_Call) Run(run func(seriesId int, sort series.Sort, pagination series.Pagination)) *MockSeriesDb_ListSeriesValues_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 int
 		if args[0] != nil {
 			arg0 = args[0].(int)
 		}
-		var arg1 string
+		var arg1 series.Sort
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(series.Sort)
 		}
-		var arg2 string
+		var arg2 series.Pagination
 		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		var arg3 int
-		if args[3] != nil {
-			arg3 = args[3].(int)
-		}
-		var arg4 int
-		if args[4] != nil {
-			arg4 = args[4].(int)
+			arg2 = args[2].(series.Pagination)
 		}
 		run(
 			arg0,
 			arg1,
 			arg2,
-			arg3,
-			arg4,
 		)
 	})
 	return _c
@@ -355,7 +343,7 @@ func (_c *MockSeriesDb_ListSeriesValues_Call) Return(seriesValues []series.Serie
 	return _c
 }
 
-func (_c *MockSeriesDb_ListSeriesValues_Call) RunAndReturn(run func(seriesId int, sort string, dir string, page int, pageSize int) []series.SeriesValue) *MockSeriesDb_ListSeriesValues_Call {
+func (_c *MockSeriesDb_ListSeriesValues_Call) RunAndReturn(run func(seriesId int, sort series.Sort, pagination series.Pagination) []series.SeriesValue) *MockSeriesDb_ListSeriesValues_Call {
 	_c.Call.Return(run)
 	return _c
 }
