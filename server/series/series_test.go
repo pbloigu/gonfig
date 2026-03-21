@@ -110,7 +110,7 @@ func (st *SeriesTestSuite) TestListSeriesValues() {
 	}
 
 	result := st.repo.ListSeriesValues(seriesId, Sort{Field: ID, Dir: DESC}, Pagination{Page: 1, Size: 10})
-	st.Equal(10, len(result))
+	st.Len(result, 10)
 	st.Equal(51, result[0].Id)
 }
 
@@ -126,7 +126,7 @@ func (st *SeriesTestSuite) TestListSeries() {
 	}
 
 	series := st.repo.ListSeries("appId")
-	st.Equal(2, len(series))
+	st.Len(series, 2)
 	st.Equal("series1", series[0].Name)
 	st.Equal("value: 8", *series[0].LastValue)
 
@@ -239,7 +239,7 @@ func (st *SeriesTestSuite) TestPersistMultiple() {
 
 	m := st.repo.GetSeries("TestApp1", "testMeasurement1")
 	values := st.repo.ListSeriesValues(m.Id, Sort{Field: CREATED, Dir: ASC}, Pagination{Page: 1, Size: 10})
-	st.Equal(2, len(values))
+	st.Len(values, 2)
 	st.Equal("testValue1", *values[0].Data)
 	st.Equal("testValue2", *values[1].Data)
 	st.Equal(1768723151, *values[0].RecordedAt)

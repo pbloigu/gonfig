@@ -3,13 +3,25 @@ package configurations
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestListSeriesTriggers(t *testing.T) {
-	repo := New(t.TempDir() + "/tmp.sqlite")
+type AutomationsTestSuite struct {
+	suite.Suite
+	repo *c
+}
 
-	repo.PersistApplication(Application{
+func TestAutomationsSuite(t *testing.T) {
+	suite.Run(t, &AutomationsTestSuite{})
+}
+
+func (st *AutomationsTestSuite) SetupTest() {
+	st.repo = New(st.T().TempDir() + "/tmp.sqlite").(*c)
+}
+
+func (st *AutomationsTestSuite) TestListSeriesTriggers() {
+
+	st.repo.PersistApplication(Application{
 		Id:     "appid1",
 		ApiKey: "apikey1",
 		Name:   "appname1",
@@ -42,23 +54,23 @@ func TestListSeriesTriggers(t *testing.T) {
 		},
 	}
 
-	repo.PersistSeriesTrigger("appid1", mt1)
-	repo.PersistSeriesTrigger("appid1", mt2)
+	st.repo.PersistSeriesTrigger("appid1", mt1)
+	st.repo.PersistSeriesTrigger("appid1", mt2)
 
-	mts := repo.ListSeriesTriggers("appid1")
-	assert.Len(t, mts, 2)
+	mts := st.repo.ListSeriesTriggers("appid1")
+	st.Len(mts, 2)
 	for _, mt := range mts {
-		assert.Len(t, mt.Actions, 2)
+		st.Len(mt.Actions, 2)
 	}
-	assert.Len(t, func() []Action {
-		if st, ok := repo.(*c).seriesTriggers.Load("appid1:Measurement1"); ok {
+	st.Len(func() []Action {
+		if st, ok := st.repo.seriesTriggers.Load("appid1:Measurement1"); ok {
 			return st.(SeriesTrigger).Actions
 		} else {
 			return []Action{}
 		}
 	}(), 2)
-	assert.Len(t, func() []Action {
-		if st, ok := repo.(*c).seriesTriggers.Load("appid1:Measurement2"); ok {
+	st.Len(func() []Action {
+		if st, ok := st.repo.seriesTriggers.Load("appid1:Measurement2"); ok {
 			return st.(SeriesTrigger).Actions
 		} else {
 			return []Action{}
@@ -67,10 +79,9 @@ func TestListSeriesTriggers(t *testing.T) {
 
 }
 
-func TestGetStatusChangeTrigger(t *testing.T) {
-	repo := New(t.TempDir() + "/tmp.sqlite")
+func (st *AutomationsTestSuite) TestGetStatusChangeTrigger() {
 
-	repo.PersistApplication(Application{
+	st.repo.PersistApplication(Application{
 		Id:     "appid1",
 		ApiKey: "apikey1",
 		Name:   "appname1",
@@ -89,12 +100,12 @@ func TestGetStatusChangeTrigger(t *testing.T) {
 		},
 	}
 
-	repo.PersistStatusChangeTrigger("appid1", st1)
+	st.repo.PersistStatusChangeTrigger("appid1", st1)
 
-	tr := repo.GetStatusChangeTrigger("appid1")
-	assert.Len(t, tr.Actions, 2)
-	assert.Len(t, func() []Action {
-		if st, ok := repo.(*c).statusTriggers.Load("appid1"); ok {
+	tr := st.repo.GetStatusChangeTrigger("appid1")
+	st.Len(tr.Actions, 2)
+	st.Len(func() []Action {
+		if st, ok := st.repo.statusTriggers.Load("appid1"); ok {
 			return st.(StatusChangeTrigger).Actions
 		} else {
 			return []Action{}
@@ -103,10 +114,9 @@ func TestGetStatusChangeTrigger(t *testing.T) {
 
 }
 
-func TestUpdateStatusChangeTrigger(t *testing.T) {
-	repo := New(t.TempDir() + "/tmp.sqlite")
+func (st *AutomationsTestSuite) TestUpdateStatusChangeTrigger() {
 
-	repo.PersistApplication(Application{
+	st.repo.PersistApplication(Application{
 		Id:     "appid1",
 		ApiKey: "apikey1",
 		Name:   "appname1",
@@ -125,17 +135,17 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 		},
 	}
 
-	repo.PersistStatusChangeTrigger("appid1", st1)
-	assert.Len(t, func() []Action {
-		if st, ok := repo.(*c).statusTriggers.Load("appid1"); ok {
+	st.repo.PersistStatusChangeTrigger("appid1", st1)
+	st.Len(func() []Action {
+		if st, ok := st.repo.statusTriggers.Load("appid1"); ok {
 			return st.(StatusChangeTrigger).Actions
 		} else {
 			return []Action{}
 		}
 	}(), 2)
 
-	tr := repo.GetStatusChangeTrigger("appid1")
-	assert.Len(t, tr.Actions, 2)
+	tr := st.repo.GetStatusChangeTrigger("appid1")
+	st.Len(tr.Actions, 2)
 
 	st2 := StatusChangeTrigger{
 		Actions: []Action{
@@ -149,28 +159,27 @@ func TestUpdateStatusChangeTrigger(t *testing.T) {
 			},
 		},
 	}
-	repo.UpdateStatusChangeTrigger("appid1", st2)
-	tr = repo.GetStatusChangeTrigger("appid1")
-	assert.Len(t, tr.Actions, 2)
-	assert.Equal(t, "Action3", tr.Actions[0].Description)
-	assert.Equal(t, "Action4", tr.Actions[1].Description)
-	assert.Equal(t, "Script3", tr.Actions[0].Script)
-	assert.Equal(t, "Script4", tr.Actions[1].Script)
+	st.repo.UpdateStatusChangeTrigger("appid1", st2)
+	tr = st.repo.GetStatusChangeTrigger("appid1")
+	st.Len(tr.Actions, 2)
+	st.Equal("Action3", tr.Actions[0].Description)
+	st.Equal("Action4", tr.Actions[1].Description)
+	st.Equal("Script3", tr.Actions[0].Script)
+	st.Equal("Script4", tr.Actions[1].Script)
 
 	var cached []Action
-	if st, ok := repo.(*c).statusTriggers.Load("appid1"); ok {
+	if st, ok := st.repo.statusTriggers.Load("appid1"); ok {
 		cached = st.(StatusChangeTrigger).Actions
 	} else {
 		cached = []Action{}
 	}
 
-	assert.Len(t, cached, 2)
+	st.Len(cached, 2)
 
-	assert.Equal(t, "Action3", cached[0].Description)
-	assert.Equal(t, "Action4", cached[1].Description)
-	assert.Equal(t, "Script3", cached[0].Script)
-	assert.Equal(t, "Script4", cached[1].Script)
+	st.Equal("Action3", cached[0].Description)
+	st.Equal("Action4", cached[1].Description)
+	st.Equal("Script3", cached[0].Script)
+	st.Equal("Script4", cached[1].Script)
 
-	cached = repo.GetStatusChangeActions("appid1")
-
+	cached = st.repo.GetStatusChangeActions("appid1")
 }

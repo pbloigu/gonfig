@@ -103,19 +103,13 @@ func (c *c) GetConfiguration(appId string) Configuration {
 	conf := Configuration{}
 	r, err := c.db.Context().Query(
 		`SELECT 
-            tmp.data,
-            tmp.created
-        FROM (
-            SELECT 
-                data,
-                created 
-            FROM 
-                Configuration
-                WHERE application_id = ?
-                AND is_latest = true
-            ORDER BY created DESC
-            LIMIT 1
-        ) tmp
+            data,
+            created 
+        FROM 
+            Configuration
+        WHERE application_id = ?
+        AND is_latest = true
+        ORDER BY created DESC
         `, appId)
 	if err != nil {
 		log.Panic().AnErr("error", err).Msg("Could not get configuration.")
