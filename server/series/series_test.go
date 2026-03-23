@@ -146,7 +146,7 @@ func (st *SeriesTestSuite) TestInitSeries() {
 	r.Scan(&id)
 	r.Close()
 
-	r, err = st.repo.db.Db().Query(fmt.Sprintf(`SELECT COUNT(*) FROM SeriesValue_%d`, id))
+	r, err = st.repo.db.Context().Query(fmt.Sprintf(`SELECT COUNT(*) FROM SeriesValue_%d`, id))
 	if err != nil {
 		st.Fail(err.Error())
 	}
@@ -165,7 +165,7 @@ func (st *SeriesTestSuite) TestPeristSeriesValue() {
 		Data: &data,
 	})
 
-	r, err := st.repo.db.Db().Query(fmt.Sprintf(`SELECT data FROM SeriesValue_%d`, seriesId))
+	r, err := st.repo.db.Context().Query(fmt.Sprintf(`SELECT data FROM SeriesValue_%d`, seriesId))
 	if err != nil {
 		st.Fail(err.Error())
 	}

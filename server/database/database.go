@@ -42,7 +42,6 @@ var logLvls = map[zerolog.Level]sqldblogger.Level{
 type Database interface {
 	DoInTransaction(f func(dba Context) (any, error)) (any, error)
 	Context() Context
-	Db() *sql.DB
 }
 
 type Context interface {
@@ -117,10 +116,6 @@ func (db database) Context() Context {
 type dbCtx struct {
 	db  *sql.DB
 	ctx context.Context
-}
-
-func (db database) Db() *sql.DB {
-	return db.db
 }
 
 func (db dbCtx) Exec(query string, args ...any) (sql.Result, error) {

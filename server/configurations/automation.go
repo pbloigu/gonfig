@@ -81,7 +81,7 @@ func (c *c) UpdateCronTrigger(cr CronTrigger) {
 		}
 		_, err = dba.Exec(`
 			UPDATE CronTrigger
-			SET description = ?
+			SET description = ?,
 				expression = ?
 			WHERE id = ?
 		`, cr.Description, cr.CronExpression, cr.Id)
@@ -145,7 +145,9 @@ func (c *c) GetCronTrigger(id int) CronTrigger {
 		cr := CronTrigger{}
 		r, err := dba.Query(`
             SELECT
-                id
+                id,
+				description,
+				expression
             FROM CronTrigger
             WHERE id = ?`, id)
 		if err != nil {
@@ -154,7 +156,7 @@ func (c *c) GetCronTrigger(id int) CronTrigger {
 		}
 		defer r.Close()
 		if r.Next() {
-			err = r.Scan(&cr.Id)
+			err = r.Scan(&cr.Id, &cr.Description, &cr.CronExpression)
 			if err != nil {
 				log.Panic().AnErr("error", err).Msg("Database operation failed.")
 			}
@@ -188,7 +190,7 @@ func (c *c) ListCronTriggers() []CronTrigger {
 		log.Panic().AnErr("error", err).Msg("Could not list cron triggers.")
 	}
 	defer res.Close()
-	cts := make(map[int]CronTrigger, 0)
+	cts := make(map[int]*CronTrigger, 0)
 	type row struct {
 		id     int
 		descr  string
@@ -205,22 +207,23 @@ func (c *c) ListCronTriggers() []CronTrigger {
 				Script:      r.script,
 			})
 		} else {
-			ct = CronTrigger{
-				Id:          r.id,
-				Description: r.descr,
-				Actions:     make([]Action, 0),
+			ct := CronTrigger{
+				Id:             r.id,
+				CronExpression: r.expr,
+				Description:    r.descr,
+				Actions:        make([]Action, 0),
 			}
 			ct.Actions = append(ct.Actions, Action{
 				Description: r.adescr,
 				Script:      r.script,
 			})
-			cts[r.id] = ct
+			cts[r.id] = &ct
 		}
 	}
 
 	result := make([]CronTrigger, 0)
 	for _, ct := range cts {
-		result = append(result, ct)
+		result = append(result, *ct)
 	}
 	return result
 
@@ -277,10 +280,7 @@ func (c *c) PersistCronTrigger(cr CronTrigger) CronTrigger {
 		}
 
 		r, err := dba.Query(`
-            SELECT id
-            FROM CronTrigger
-            WHERE expression = ?
-        `, cr.CronExpression)
+            SELECT last_insert_rowid()`)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Cron trigger was not inserted.")
 			return nil, err
@@ -327,10 +327,7 @@ func (c *c) PersistStatusChangeTrigger(appId string, st StatusChangeTrigger) Sta
 		}
 
 		r, err := dba.Query(`
-            SELECT id
-            FROM StatusTrigger
-            WHERE application_id = ?
-        `, appId)
+            SELECT last_insert_rowid()`)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Status change trigger was not inserted.")
 			return nil, err
@@ -377,11 +374,7 @@ func (c *c) PersistSeriesTrigger(appId string, st SeriesTrigger) {
 			return nil, err
 		}
 		r, err := dba.Query(`
-            SELECT id
-            FROM SeriesTrigger
-            WHERE application_id = ?
-            AND series_name = ?
-        `, appId, st.SeriesName)
+            SELECT last_insert_rowid()`)
 		if err != nil {
 			log.Error().AnErr("error", err).Msg("Series trigger was not inserted.")
 			return nil, err
@@ -437,6 +430,7 @@ func (c *c) DeleteStatusChangeTrigger(appId string) {
 			log.Error().AnErr("error", err).Msg("Deleting status change trigger failed.")
 			return nil, err
 		}
+		c.statusTriggers.Delete(appId)
 		return nil, nil
 	})
 	if err != nil {
