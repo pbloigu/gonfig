@@ -6,3 +6,4 @@ server/gonfig_arm64
 .env.*
 !.env.example
 
+*__debug_bin*
