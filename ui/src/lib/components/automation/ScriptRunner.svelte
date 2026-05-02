@@ -16,7 +16,7 @@
 	let { script } = $props();
 	let open: boolean = $state(false);
 	let params: ScriptParam[] = $state([]);
-	let response: string | null = $state(null);
+	let response: string | null | undefined = $state(null);
 
 	$effect(() => {
 		if (!open) {
@@ -49,10 +49,10 @@
 	};
 	let execute = function () {
 		Execute(script, params).then((r) => {
-			if (r == null) {
+			if (r.ok) {
 				response = 'Success!';
 			} else {
-				response = r;
+				response = r.error;
 			}
 		});
 	};

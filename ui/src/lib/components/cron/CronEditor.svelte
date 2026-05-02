@@ -6,10 +6,10 @@
 />
 
 <script lang="ts">
-	import type { CronValidationRequest } from '$lib/client/definitions';
 	import { IsValid } from '$lib/service';
+	import type { components } from '$lib/client/api'
 	import { Helper, Input, Label } from 'flowbite-svelte';
-	let expr: CronValidationRequest = $state({
+	let expr: components["schemas"]["CronValidationRequest"] = $state({
 		dayOfMonth: '*',
 		dayOfWeek: '*',
 		hour: '*',

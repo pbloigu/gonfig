@@ -18,11 +18,11 @@
 		ToolbarGroup,
 		ToolbarButton
 	} from 'flowbite-svelte';
-	import { CodeOutline } from 'flowbite-svelte-icons';
-	import { type Application } from '$lib/client/definitions';
+	import { CodeOutline } from 'flowbite-svelte-icons';	
 	import { AddApplication } from '../service';
+	import type { components } from '$lib/client/api';
 	let { dataChanged } = $props();
-	let app: Application = $state({ name: '', configuration: { data: '' } });
+	let app: components["schemas"]["Application"] = $state({ name: '', configuration: { data: '' } });
 	
 
 	let modalStatus = $state(false);
@@ -51,8 +51,10 @@
 				<Input id="app-name" type="text" bind:value={app.name}></Input>
 			</P>
 			<P>
-				<Label for="editor">Configuration</Label>
-				<!-- svelte-ignore binding_property_non_reactive -->
+				<Label for="editor">Configuration</Label>				
+				 {#if !app.configuration}
+					{app.configuration = {data: ""}}
+				 {/if}
 				<Textarea id="editor" rows={8} bind:value={app.configuration.data}>
 					{#snippet header()}
 						<Toolbar embedded>

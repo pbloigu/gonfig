@@ -1,10 +1,9 @@
-import { AxiosError, AxiosHeaders, type AxiosResponse } from "axios";
-import Api from "./client/api"
-import { type Application, type CronValidationRequest, type ErrorModel, type LoginResponse, type ScriptExecutionRequest, type Series, type SeriesValues, type StatusChangeTrigger, type WithoutWriteonly } from './client/definitions'
 import { goto } from "$app/navigation";
 import { PersistentState } from '@friendofsvelte/state';
 const { MODE, VITE_API_URL } = import.meta.env;
 
+import createClient, { type Middleware } from "openapi-fetch";
+import type { paths, components } from "./client/api";
 
 export interface Error {
     code?: number
@@ -23,9 +22,6 @@ export const token = new PersistentState<Token>("token", {
     value: null
 }, "sessionStorage")
 
-var baseUrl: string | undefined = undefined
-
-
 const resolveBaseUri = function (): string {
     if (MODE == "development") {
         return VITE_API_URL
@@ -34,186 +30,257 @@ const resolveBaseUri = function (): string {
     }
 }
 
-const getApi = function (): Api {
-    var a = new Api({
-        baseURL: resolveBaseUri()
-    });
-    a.axios.interceptors.request.use((r) => {
-        r.headers.set("Authorization", "Bearer " + token.current.value)
-        return r
-    })
 
-    return a
-}
+const client = createClient<paths>({ baseUrl: resolveBaseUri() });
 
-const defaultErrorHandler = async function (error: AxiosError) {
-    if (error.response?.status == 401) {
-        token.current.value = null
-        await goto("/login")
-    } else {
-        await goto("/error", {
-            state: {
-                code: error.response?.status,
-                message: error.cause
+const middleware: Middleware = {
+    async onRequest({ request, schemaPath }) {
+        if (!schemaPath.startsWith("/login")) {
+            request.headers.set("Authorization", "Bearer " + token.current.value);
+        }
+        return request;
+    },
+    async onResponse({ request, response, schemaPath }) {
+        if (schemaPath.startsWith("/logout")) {
+            token.current.value = null
+        }
+        if (!response.ok) {
+            // it's okay, you can't always have what you want
+            if (schemaPath.startsWith("/application/{id}/trigger/status")
+                && request.method.toUpperCase() == "GET"
+                && response.status == 404) {
+                return;
             }
-        })
-    }
-    return Promise.reject(error)
-}
+            // it's okay, this is a validation endpoint
+            else if (schemaPath.startsWith("/cron/expression")
+                && request.method.toUpperCase() == "POST"
+                && response.status == 404) {
+                return;
+            } else if (response.status == 401) {
+                goto("/login")
+            } else {
+                goto("/error", {
+                    state: {
+                        code: response.status,
+                        message: response.text
+                    }
+                })
+            }
+        } else {
+            return response;
+        }
 
-const notFoundErrorHandler = async function (error: AxiosError) {
-    if (error.response?.status == 404) {
-        return Promise.resolve(null)
-    } else {
-        return await defaultErrorHandler(error)
+    },
+    async onError({ error }) {
+        // wrap errors thrown by fetch
+        return new Error("Oops, fetch failed", { cause: error });
+    },
+};
+
+client.use(middleware)
+
+export const Login = async function (username: string, password: string) {
+    const { data } = await client.POST("/login", {
+        body: {
+            password: password,
+            username: username
+        }
+    })
+    if (data) {
+        token.current.value = data.token
+        goto("/applications")
     }
 }
-
 
 export const Logout = async function () {
-    const response: AxiosResponse<any, any> = await getApi().Default.logout(
-        { Authorization: token.current.value || "" }, {})
-    return Promise.resolve(response.data).then((l: any) => {
-        token.current.value = null
-        goto("/")
+    const { data } = await client.GET("/logout")
+    goto("/")
+}
+
+export const ListApplications = async function (): Promise<components["schemas"]["Application"][]> {
+    const { data } = await client.GET("/applications")
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve([])
+    }
+}
+
+export const GetApplication = async function (appId: string): Promise<components["schemas"]["Application"]> {
+    const { data } = await client.GET("/application/{id}", {
+        params: {
+            path: {
+                id: appId
+            }
+        }
     })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["Application"])
+    }
 }
 
-export const Login = async function name(username: string, password: string) {
-    const response: AxiosResponse<any, any> = await getApi().Default.login({}, { username: username, password: password })
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    Promise.resolve(response.data).then((l: LoginResponse) => {
-        token.current.value = l.token
-        goto("/applications")
+export const AddApplication = async function (app: components["schemas"]["Application"]): Promise<components["schemas"]["Application"]> {
+    const { data } = await client.POST("/application", {
+        body: app
     })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["Application"])
+    }
 }
 
-export const ListApplications = async function (): Promise<Application[]> {
-    const response: AxiosResponse<WithoutWriteonly<Application>[]> = await getApi().Default.listApplications({}, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data);
-}
-
-export const GetApplication = async function (appId: string): Promise<Application> {
-    const response: AxiosResponse<WithoutWriteonly<Application>> = await getApi().Default.getApplication({ id: appId }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const AddApplication = async function (app: Application): Promise<Application> {
-    const response = await getApi().Default.addApplication({}, app, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const AddSeries = async function name(name: string, appId: string): Promise<Series> {
-    const response = await getApi().Default.addSeries({ id: appId }, { name: name }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
+export const AddSeries = async function (name: string, appId: string): Promise<components["schemas"]["Series"]> {
+    const { data } = await client.POST("/application/{id}/series", {
+        params: {
+            path: {
+                id: appId
+            }
+        },
+        body: {
+            name: name
+        }
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["Series"])
+    }
 }
 
 export const UpdateConfiguration = async function (appId: string, configuration: string) {
-    const response = await getApi().Default.addConfiguration({ id: appId }, { data: configuration }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const DeleteApplication = async function (appId: string) {
-    const response = await getApi().Default.deleteApplication({ id: appId }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const ListSeries = async function (appId: string): Promise<Series[]> {
-    const response = await getApi().Default.listSeries({ id: appId }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const ListSeriesValues = async function name(name: string, appId: string, page: number): Promise<SeriesValues> {
-    const response = await getApi().Default.listSeriesValues({
-        id: appId,
-        name: name,
-        dir: "desc",
-        page: page,
-        size: 10,
-        sort: "data"
-    }, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-
-}
-
-export const GetStatusChangeTrigger = async function (appId: string): Promise<StatusChangeTrigger | null> {
-    const response = await getApi().Default.getStatusChangeTrigger({ id: appId }, {})
-        .catch((error: AxiosError) => notFoundErrorHandler(error))
-    return Promise.resolve(response).then((r: AxiosResponse | null) => {
-        if (r == null) {
-            return null
-        } else {
-            return r.data
+    await client.POST("/application/{id}/configuration", {
+        params: {
+            path: {
+                id: appId
+            }
+        },
+        body: {
+            data: configuration
         }
     })
 }
 
-export const AddStatusChangeTrigger = async function (appId: string, trigger: StatusChangeTrigger): Promise<StatusChangeTrigger> {
-    const response = await getApi().Default.addStatusChangeTrigger({ id: appId }, trigger, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
+export const DeleteApplication = async function (appId: string) {
+    await client.DELETE("/application/{id}", {
+        params: {
+            path: {
+                id: appId
+            }
+        }
+    })
 }
 
-export const UpdateStatusChangeTrigger = async function (appId: string, trigger: StatusChangeTrigger) {
-    const response = await getApi().Default.updateStatusChangeTrigger({ id: appId }, trigger, {})
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
+export const ListSeries = async function (appId: string): Promise<components["schemas"]["Series"][]> {
+    const { data } = await client.GET("/application/{id}/series", {
+        params: {
+            path: {
+                id: appId
+            }
+        }
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve([])
+    }
+}
+
+
+export const ListSeriesValues = async function name(name: string, appId: string, page: number): Promise<components["schemas"]["SeriesValues"]> {
+    const { data } = await client.GET("/application/{id}/series/{name}/values", {
+        params: {
+            path: {
+                id: appId,
+                name: name
+            }
+        }
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["SeriesValues"])
+    }
+}
+
+export const GetStatusChangeTrigger = async function (appId: string): Promise<components["schemas"]["StatusChangeTrigger"] | null> {
+    const { data } = await client.GET("/application/{id}/trigger/status", {
+        params: {
+            path: {
+                id: appId
+            }
+        }
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve(null)
+    }
+}
+
+export const AddStatusChangeTrigger = async function (appId: string, trigger: components["schemas"]["StatusChangeTrigger"]): Promise<components["schemas"]["StatusChangeTrigger"]> {
+    const { data } = await client.POST("/application/{id}/trigger/status", {
+        params: {
+            path: {
+                id: appId
+            }
+        },
+        body: trigger
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["StatusChangeTrigger"])
+    }
+}
+
+export const UpdateStatusChangeTrigger = async function (appId: string, trigger: components["schemas"]["StatusChangeTrigger"]) {
+    await client.PUT("/application/{id}/trigger/status", {
+        params: {
+            path: {
+                id: appId
+            }
+        },
+        body: trigger
+    })
 }
 
 export const DeleteStatusChangeTrigger = async function (appId: string) {
-    const response = await getApi().Default.deleteStatusChangeTrigger({ id: appId })
-        .catch((error: AxiosError) => defaultErrorHandler(error))
-    return Promise.resolve(response.data)
-}
-
-export const IsValid = async function (cronExpression: CronValidationRequest): Promise<boolean> {
-    const response = await getApi().Default.isValid({}, cronExpression, {})
-        .catch((error: AxiosError) => {
-            if (error.status == 400) {
-                return Promise.resolve(false)
-            } else {
-                defaultErrorHandler(error)
+    await client.DELETE("/application/{id}/trigger/status", {
+        params: {
+            path: {
+                id: appId
             }
-        })
-
-    return !response ? Promise.resolve(false) : Promise.resolve(true)
+        }
+    })
 }
 
-const isErrorModel = (value: unknown): value is ErrorModel => 
-    !!value 
-    && typeof value === 'object' 
-    && '$schema' in value 
-    && typeof (value as ErrorModel).$schema === 'string'
-    && ((value as ErrorModel).$schema as string).indexOf("ErrorModel") >= 0
+export const IsValid = async function (cronExpression: components["schemas"]["CronValidationRequest"]): Promise<boolean> {
+    const { data } = await client.POST("/cron/expression", {
+        body: cronExpression
+    })
+    return data ? Promise.resolve(true) : Promise.resolve(false);
+}
 
-export const Execute = async function (script: string, params: ScriptParam[]): Promise<string | null> {
-    let req: ScriptExecutionRequest = {
+
+export const Execute = async function (script: string, params: ScriptParam[]): Promise<components["schemas"]["ScriptExecutionResponse"]> {
+    let req: components["schemas"]["ScriptExecutionRequest"] = {
         script: script,
         context: {}
     }
     params.forEach(p => {
         req.context[p.key] = p.value
     })
-    const response = await getApi().Default.executeScript({}, req, {})
-        .catch((error: AxiosError) => {
-            if (error.status == 500) {
-                if (isErrorModel(error.response?.data)) {
-                    if(error.response?.data.errors){
-                        return error.response?.data.errors[0].message
-                    }
-                }
-                return error.response?.statusText
-            } else {
-                defaultErrorHandler(error)
-            }
-        })
-    return (typeof response === 'string') ? Promise.resolve(response.toString()) : null
+
+    const { data } = await client.POST("/scripting/execute", {
+        body: req
+    })
+    if (data) {
+        return Promise.resolve(data)
+    } else {
+        return Promise.resolve({} as components["schemas"]["ScriptExecutionResponse"])
+    }
 }
+

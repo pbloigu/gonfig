@@ -6,16 +6,16 @@
 />
 
 <script lang="ts">
+	import type { components } from '$lib/client/api';
 	import { AddSeries } from '$lib/service';
 	import { Button, Input, Label, Modal, P } from 'flowbite-svelte';
-	import type { Series } from '$lib/client/definitions';
 	let { app, seriesAdded } = $props();
 	let modalStatus = $state(false);
 	let seriesName: string = $state('');
 
 	const addSeries = () => {
 		if (seriesName) {
-			AddSeries(seriesName, app.id).then((s: Series) => {
+			AddSeries(seriesName, app.id).then((s: components["schemas"]["Series"]) => {
 				modalStatus = false;
 				seriesAdded();
 			});

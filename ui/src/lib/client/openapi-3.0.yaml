@@ -231,6 +231,25 @@ components:
         - script
         - context
       type: object
+    ScriptExecutionResponse:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          example: https://example.com/schemas/ScriptExecutionResponse.json
+          format: uri
+          readOnly: true
+          type: string
+        error:
+          nullable: true
+          readOnly: true
+          type: string
+        ok:
+          readOnly: true
+          type: boolean
+      required:
+        - ok
+      type: object
     Series:
       additionalProperties: false
       properties:
@@ -963,8 +982,12 @@ paths:
               $ref: "#/components/schemas/ScriptExecutionRequest"
         required: true
       responses:
-        "204":
-          description: No Content
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScriptExecutionResponse"
+          description: OK
         default:
           content:
             application/problem+json:

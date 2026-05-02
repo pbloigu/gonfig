@@ -50,8 +50,25 @@ type controller struct {
 
 func (c controller) executeScript(ctx context.Context, input *struct {
 	Body api.ScriptExecutionRequest
-}) (*struct{}, error) {
-	return &struct{}{}, c.src.Execute(input.Body)
+}) (*struct {
+	Body api.ScriptExecutionResponse
+}, error) {
+	err := c.src.Execute(input.Body)
+	r := api.ScriptExecutionResponse{
+		Ok: err == nil,
+		Error: func() *string {
+			if err != nil {
+				e := err.Error()
+				return &e
+			} else {
+				return nil
+			}
+		}(),
+	}
+	return &struct{ Body api.ScriptExecutionResponse }{
+		Body: r,
+	}, nil
+
 }
 
 func (c controller) litsCronTriggers(ctx context.Context, input *struct{}) (*struct{ Body []api.CronTrigger }, error) {

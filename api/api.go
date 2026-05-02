@@ -92,3 +92,8 @@ type ScriptExecutionRequest struct {
 	Script  string            `json:"script" doc:"Risor script to execute."`
 	Context map[string]string `json:"context" doc:"Risor script to execute."`
 }
+
+type ScriptExecutionResponse struct {
+	Ok    bool    `json:"ok" required:"true" readOnly:"true"`
+	Error *string `json:"error" required:"false" readOnly:"true"`
+}
